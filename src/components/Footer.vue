@@ -14,12 +14,22 @@
           <ul class="space-y-2 text-gray-400">
             <li>
               <router-link to="/" class="hover:text-white transition-colors">
-                Trang chủ
+                Dashboard
               </router-link>
             </li>
             <li>
-              <router-link to="/about" class="hover:text-white transition-colors">
-                Giới thiệu
+              <router-link to="/students" class="hover:text-white transition-colors">
+                Học sinh
+              </router-link>
+            </li>
+            <li>
+              <router-link to="/classes" class="hover:text-white transition-colors">
+                Lớp học
+              </router-link>
+            </li>
+            <li>
+              <router-link to="/subscriptions" class="hover:text-white transition-colors">
+                Gói học
               </router-link>
             </li>
           </ul>
