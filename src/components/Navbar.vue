@@ -14,14 +14,28 @@
             class="text-gray-700 hover:text-primary-600 transition-colors duration-200"
             active-class="text-primary-600 font-semibold"
           >
-            Trang chủ
+            Dashboard
           </router-link>
           <router-link
-            to="/about"
+            to="/students"
             class="text-gray-700 hover:text-primary-600 transition-colors duration-200"
             active-class="text-primary-600 font-semibold"
           >
-            Giới thiệu
+            Học sinh
+          </router-link>
+          <router-link
+            to="/classes"
+            class="text-gray-700 hover:text-primary-600 transition-colors duration-200"
+            active-class="text-primary-600 font-semibold"
+          >
+            Lớp học
+          </router-link>
+          <router-link
+            to="/subscriptions"
+            class="text-gray-700 hover:text-primary-600 transition-colors duration-200"
+            active-class="text-primary-600 font-semibold"
+          >
+            Gói học
           </router-link>
         </div>
 
