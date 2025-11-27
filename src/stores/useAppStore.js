@@ -180,8 +180,7 @@ export const useAppStore = defineStore('app', () => {
 
       // Check success field (some APIs might not have this field)
       if (result.success === false) {
-        const errorMessage = result.message || 'Email hoặc mật khẩu không đúng'
-        return { success: false, message: errorMessage }
+        return { success: false, message: result.message || result.error }
       }
 
       // If response is ok but no success field, assume it's successful if we have data
@@ -242,8 +241,7 @@ export const useAppStore = defineStore('app', () => {
 
       // Check success field
       if (result.success === false) {
-        const errorMessage = result.message || 'Đăng ký thất bại'
-        return { success: false, message: errorMessage }
+        return { success: false, message: result.message || result.error }
       }
 
       // If response is ok but no success field, assume it's successful if we have data
@@ -297,42 +295,23 @@ export const useAppStore = defineStore('app', () => {
 
   const loginParent = async (credentials) => {
     try {
-      // Try both endpoints - some APIs might use different paths
-      let response
-      let data
+      // Use the correct endpoint: /api/auth/parent/login
+      const endpoint = API_ENDPOINTS.AUTH.PARENT_LOGIN
       
-      // Try first endpoint: /api/parents/login
-      try {
-        response = await axiosInstance.post(API_ENDPOINTS.PARENTS.LOGIN, {
-          identifier: credentials.identifier, // email or phone
-          password: credentials.password
-        })
-        data = response.data
-      } catch (firstError) {
-        // If first endpoint fails, try alternative endpoint
-        try {
-          response = await axiosInstance.post(API_ENDPOINTS.AUTH.PARENT_LOGIN, {
-            identifier: credentials.identifier,
-            password: credentials.password
-          })
-          data = response.data
-        } catch (secondError) {
-          // Both endpoints failed
-          if (secondError.response) {
-            const errorMessage = secondError.response.data?.message || secondError.response.data?.error || 'Email/Số điện thoại hoặc mật khẩu không đúng'
-            return { success: false, message: errorMessage }
-          } else if (secondError.request) {
-            return { success: false, message: 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.' }
-          } else {
-            return { success: false, message: 'Đã có lỗi xảy ra. Vui lòng thử lại.' }
-          }
-        }
-      }
+      // Detect if identifier is email or phone
+      const isEmail = credentials.identifier.includes('@')
+      
+      // Backend requires email or phone field, not identifier
+      const requestBody = isEmail 
+        ? { email: credentials.identifier, password: credentials.password }
+        : { phone: credentials.identifier, password: credentials.password }
+      
+      const response = await axiosInstance.post(endpoint, requestBody)
+      const data = response.data
 
       // Check if API returned success: false
       if (data.success === false) {
-        const errorMessage = data.message || data.error || 'Email/Số điện thoại hoặc mật khẩu không đúng'
-        return { success: false, message: errorMessage }
+        return { success: false, message: data.message || data.error }
       }
 
       // Extract parent data from response (handle different response formats)
@@ -371,11 +350,10 @@ export const useAppStore = defineStore('app', () => {
       
       return { success: true }
     } catch (error) {
-      console.error('Login error:', error)
-      // Handle axios errors
+      // Handle axios errors - chỉ trả về lỗi từ backend
       if (error.response) {
-        // Server responded with error status
-        const errorMessage = error.response.data?.message || error.response.data?.error || 'Email/Số điện thoại hoặc mật khẩu không đúng'
+        // Server responded with error status - dùng message từ backend
+        const errorMessage = error.response.data?.message || error.response.data?.error || 'Đăng nhập thất bại'
         return { success: false, message: errorMessage }
       } else if (error.request) {
         // Request was made but no response received

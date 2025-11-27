@@ -10,7 +10,7 @@ export const API_ENDPOINTS = {
     PARENT_LOGIN: '/api/auth/parent/login'
   },
   PARENTS: {
-    LOGIN: '/api/parents/login',
+    LOGIN: '/api/auth/parent/login',
     REGISTER: '/api/parents/register'
   }
 }
