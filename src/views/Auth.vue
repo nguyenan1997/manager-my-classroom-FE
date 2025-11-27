@@ -312,17 +312,19 @@ const handleParentRegister = async () => {
     }
 
     // Call API to register parent
-    const success = await store.registerParent({
+    const result = await store.registerParent({
       name: parentRegisterForm.value.name,
       email: parentRegisterForm.value.email,
       phone: parentRegisterForm.value.phone,
       password: parentRegisterForm.value.password
     })
 
-    if (success) {
+    // Handle both old format (boolean) and new format (object)
+    if (result === true || (result && result.success === true)) {
       router.push('/')
     } else {
-      parentError.value = 'Email hoặc số điện thoại đã được sử dụng'
+      // Show error message from API or default message
+      parentError.value = (result && result.message) || 'Email hoặc số điện thoại đã được sử dụng'
     }
   } catch (error) {
     parentError.value = 'Đã có lỗi xảy ra. Vui lòng thử lại.'

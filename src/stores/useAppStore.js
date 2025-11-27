@@ -246,7 +246,7 @@ export const useAppStore = defineStore('app', () => {
   const registerParent = async (parentData) => {
     try {
       // Call API to register parent
-      const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.PARENTS.REGISTER}`, {
+      const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.AUTH.PARENT_REGISTER}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -259,67 +259,66 @@ export const useAppStore = defineStore('app', () => {
         })
       })
 
+      // Check if response is ok before parsing JSON
+      let result
+      try {
+        result = await response.json()
+      } catch (parseError) {
+        return { success: false, message: 'Định dạng phản hồi không hợp lệ' }
+      }
+
+      // Check if response is successful
       if (!response.ok) {
-        return false
+        const errorMessage = result.message || 'Đăng ký thất bại'
+        return { success: false, message: errorMessage }
       }
 
-      const data = await response.json()
-      
-      // Auto login after registration
-      currentUser.value = {
-        id: data.id,
-        name: data.name || 'Phụ huynh',
-        phone: data.phone,
-        email: data.email,
-        role: 'parent',
-        studentId: data.studentId || null,
-        studentName: null
+      // Check success field
+      if (result.success === false) {
+        const errorMessage = result.message || 'Đăng ký thất bại'
+        return { success: false, message: errorMessage }
       }
-      userRole.value = 'parent'
-      
-      // Save to localStorage
-      localStorage.setItem('currentUser', JSON.stringify(currentUser.value))
-      localStorage.setItem('userRole', userRole.value)
-      
-      return true
+
+      // If response is ok but no success field, assume it's successful if we have data
+      if (result.success !== true && !result.data) {
+        return { success: false, message: 'Định dạng phản hồi không hợp lệ' }
+      }
+
+      // Save token if available
+      if (result.data && result.data.token) {
+        setAuthToken(result.data.token)
+      }
+
+      // Save parent info and auto login after registration
+      if (result.data && result.data.parent) {
+        const parent = result.data.parent
+        
+        currentUser.value = {
+          id: parent.id,
+          name: parent.name || parentData.name || 'Phụ huynh',
+          phone: parent.phone || parentData.phone,
+          email: parent.email || parentData.email,
+          role: 'parent',
+          studentId: null, // Will be set when student is linked
+          studentName: null
+        }
+        userRole.value = 'parent'
+        
+        // Save to localStorage
+        localStorage.setItem('currentUser', JSON.stringify(currentUser.value))
+        localStorage.setItem('userRole', userRole.value)
+        
+        return { success: true }
+      }
+
+      return { success: false, message: 'Không có dữ liệu người dùng trong phản hồi' }
     } catch (error) {
-      // Fallback for demo: check if email or phone already exists
-      const existingParent = parents.value.find(
-        p => p.email === parentData.email || p.phone === parentData.phone
-      )
-      
-      if (existingParent) {
-        return false
+      // Check if it's a network error
+      if (error.message.includes('fetch') || error.message.includes('Network')) {
+        return { success: false, message: 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.' }
       }
-
-      // Create new parent locally (for demo)
-      const newParent = {
-        id: Date.now().toString(),
-        name: parentData.name,
-        email: parentData.email,
-        phone: parentData.phone,
-        password: parentData.password, // In real app, this should be hashed
-        createdAt: new Date().toISOString()
-      }
-      parents.value.push(newParent)
       
-      // Auto login after registration
-      currentUser.value = {
-        id: newParent.id,
-        name: newParent.name,
-        phone: newParent.phone,
-        email: newParent.email,
-        role: 'parent',
-        studentId: null,
-        studentName: null
-      }
-      userRole.value = 'parent'
-      
-      // Save to localStorage
-      localStorage.setItem('currentUser', JSON.stringify(currentUser.value))
-      localStorage.setItem('userRole', userRole.value)
-      
-      return true
+      return { success: false, message: 'Đã có lỗi xảy ra. Vui lòng thử lại.' }
     }
   }
 

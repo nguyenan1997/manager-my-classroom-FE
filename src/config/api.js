@@ -4,7 +4,9 @@ import { API_BASE_URL } from './constants'
 // API Endpoints
 export const API_ENDPOINTS = {
   AUTH: {
-    LOGIN: '/api/auth/login'
+    LOGIN: '/api/auth/login',
+    PARENT_REGISTER: '/api/auth/parent/register',
+    PARENT_LOGIN: '/api/auth/parent/login'
   },
   PARENTS: {
     LOGIN: '/api/parents/login',
