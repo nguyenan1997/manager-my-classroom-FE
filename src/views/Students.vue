@@ -55,7 +55,12 @@
             class="border-b border-gray-100 hover:bg-gray-50"
           >
             <td class="py-3 px-4">
-              <div class="font-medium text-gray-900">{{ student.name }}</div>
+              <router-link
+                :to="`/students/${student.id}`"
+                class="font-medium text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+              >
+                {{ student.name }}
+              </router-link>
             </td>
             <td class="py-3 px-4 text-gray-700">
               {{ student.dob ? formatDate(student.dob) : (student.dateOfBirth ? formatDate(student.dateOfBirth) : '-') }}

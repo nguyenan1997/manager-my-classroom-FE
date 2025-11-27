@@ -15,8 +15,14 @@ export const API_ENDPOINTS = {
   },
   STUDENTS: {
     CREATE: '/api/students',
-    MY_CHILDREN: '/api/students/my-children' // For parent to get their children
+    MY_CHILDREN: '/api/students/my-children', // For parent to get their children
+    GET_BY_ID: '/api/students' // Will append /{id}
     // UPDATE and DELETE endpoints chưa có API
+  },
+  CLASSES: {
+    CREATE: '/api/classes',
+    LIST: '/api/classes',
+    REGISTER: '/api/classes' // Will append /{class_id}/register
   }
 }
 

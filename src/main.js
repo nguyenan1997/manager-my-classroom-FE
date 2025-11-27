@@ -5,6 +5,7 @@ import App from './App.vue'
 import './style.css'
 import Dashboard from './views/Dashboard.vue'
 import Students from './views/Students.vue'
+import StudentDetail from './views/StudentDetail.vue'
 import Classes from './views/Classes.vue'
 import Subscriptions from './views/Subscriptions.vue'
 import Auth from './views/Auth.vue'
@@ -30,10 +31,16 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/students/:id',
+    name: 'StudentDetail',
+    component: StudentDetail,
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/classes',
     name: 'Classes',
     component: Classes,
-    meta: { requiresAuth: true, requiresManager: true }
+    meta: { requiresAuth: true }
   },
   {
     path: '/subscriptions',

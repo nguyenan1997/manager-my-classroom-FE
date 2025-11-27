@@ -80,6 +80,31 @@ export const useAppStore = defineStore('app', () => {
     return students.value.find(s => s.id === id)
   }
 
+  const fetchStudentById = async (id) => {
+    try {
+      const endpoint = `${API_ENDPOINTS.STUDENTS.GET_BY_ID}/${id}`
+      const response = await axiosInstance.get(endpoint)
+      const result = response.data
+
+      if (result.success === false) {
+        return { success: false, message: result.message || result.error }
+      }
+
+      // Extract student data from response
+      const student = result.data?.student || result.data || result
+      
+      return { success: true, data: student }
+    } catch (error) {
+      if (error.response) {
+        return { success: false, message: error.response.data?.message || error.response.data?.error }
+      } else if (error.request) {
+        return { success: false, message: 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.' }
+      } else {
+        return { success: false, message: 'Đã có lỗi xảy ra. Vui lòng thử lại.' }
+      }
+    }
+  }
+
   const loadStudents = async () => {
     try {
       // Chỉ parent mới có API để load students
@@ -148,14 +173,94 @@ export const useAppStore = defineStore('app', () => {
   }
 
   // Classes Actions
-  const addClass = (classData) => {
-    const newClass = {
-      id: Date.now().toString(),
-      ...classData,
-      createdAt: new Date().toISOString()
+  const addClass = async (classData) => {
+    try {
+      const response = await axiosInstance.post(API_ENDPOINTS.CLASSES.CREATE, {
+        name: classData.name,
+        subject: classData.subject,
+        day_of_week: classData.day_of_week,
+        time_slot: classData.time_slot,
+        teacher_name: classData.teacher_name,
+        max_students: classData.max_students
+      })
+
+      const result = response.data
+
+      if (result.success === false) {
+        return { success: false, message: result.message || result.error }
+      }
+
+      // Extract class data from response
+      const newClass = result.data?.class || result.data || result
+      
+      // Add to local store
+      classes.value.push(newClass)
+      
+      return { success: true, data: newClass }
+    } catch (error) {
+      if (error.response) {
+        return { success: false, message: error.response.data?.message || error.response.data?.error }
+      } else if (error.request) {
+        return { success: false, message: 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.' }
+      } else {
+        return { success: false, message: 'Đã có lỗi xảy ra. Vui lòng thử lại.' }
+      }
     }
-    classes.value.push(newClass)
-    return newClass
+  }
+
+  const loadClasses = async (day = null) => {
+    try {
+      const params = day ? { day } : {}
+      const response = await axiosInstance.get(API_ENDPOINTS.CLASSES.LIST, { params })
+      const result = response.data
+
+      if (result.success === false) {
+        console.error('Failed to load classes:', result.message || result.error)
+        return { success: false, message: result.message || result.error }
+      }
+
+      // Extract classes array from response
+      const classesList = result.data?.classes || result.data || result.classes || []
+      classes.value = Array.isArray(classesList) ? classesList : []
+
+      return { success: true }
+    } catch (error) {
+      if (error.response) {
+        console.error('Failed to load classes:', error.response.data?.message || error.response.data?.error)
+        return { success: false, message: error.response.data?.message || error.response.data?.error }
+      } else if (error.request) {
+        console.error('Failed to load classes: No response from server')
+        return { success: false, message: 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.' }
+      } else {
+        console.error('Failed to load classes:', error.message)
+        return { success: false, message: 'Đã có lỗi xảy ra. Vui lòng thử lại.' }
+      }
+    }
+  }
+
+  const registerStudentToClass = async (classId, studentId) => {
+    try {
+      const endpoint = `${API_ENDPOINTS.CLASSES.REGISTER}/${classId}/register`
+      const response = await axiosInstance.post(endpoint, {
+        student_id: studentId
+      })
+
+      const result = response.data
+
+      if (result.success === false) {
+        return { success: false, message: result.message || result.error }
+      }
+
+      return { success: true, data: result.data }
+    } catch (error) {
+      if (error.response) {
+        return { success: false, message: error.response.data?.message || error.response.data?.error }
+      } else if (error.request) {
+        return { success: false, message: 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.' }
+      } else {
+        return { success: false, message: 'Đã có lỗi xảy ra. Vui lòng thử lại.' }
+      }
+    }
   }
 
   const updateClass = (id, updates) => {
@@ -487,6 +592,7 @@ export const useAppStore = defineStore('app', () => {
     updateStudent,
     deleteStudent,
     getStudentById,
+    fetchStudentById,
     loadStudents,
     // Parents Actions
     addParent,
@@ -494,6 +600,8 @@ export const useAppStore = defineStore('app', () => {
     deleteParent,
     // Classes Actions
     addClass,
+    loadClasses,
+    registerStudentToClass,
     updateClass,
     deleteClass,
     getClassById,
