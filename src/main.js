@@ -7,33 +7,74 @@ import Dashboard from './views/Dashboard.vue'
 import Students from './views/Students.vue'
 import Classes from './views/Classes.vue'
 import Subscriptions from './views/Subscriptions.vue'
+import Auth from './views/Auth.vue'
+import { useAppStore } from './stores/useAppStore'
 
 const routes = [
   {
+    path: '/login',
+    name: 'Auth',
+    component: Auth,
+    meta: { requiresGuest: true }
+  },
+  {
     path: '/',
     name: 'Dashboard',
-    component: Dashboard
+    component: Dashboard,
+    meta: { requiresAuth: true }
   },
   {
     path: '/students',
     name: 'Students',
-    component: Students
+    component: Students,
+    meta: { requiresAuth: true, requiresManager: true }
   },
   {
     path: '/classes',
     name: 'Classes',
-    component: Classes
+    component: Classes,
+    meta: { requiresAuth: true, requiresManager: true }
   },
   {
     path: '/subscriptions',
     name: 'Subscriptions',
-    component: Subscriptions
+    component: Subscriptions,
+    meta: { requiresAuth: true, requiresManager: true }
   }
 ]
 
 const router = createRouter({
   history: createWebHistory(),
   routes
+})
+
+// Navigation guards
+router.beforeEach((to, from, next) => {
+  const store = useAppStore()
+  
+  // Check authentication on app load
+  if (!store.currentUser) {
+    store.checkAuth()
+  }
+
+  const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
+  const requiresGuest = to.matched.some(record => record.meta.requiresGuest)
+  const requiresManager = to.matched.some(record => record.meta.requiresManager)
+  const isAuthenticated = store.isAuthenticated
+  const isManager = store.isManager
+
+  if (requiresAuth && !isAuthenticated) {
+    // Redirect to login if not authenticated
+    next('/login')
+  } else if (requiresGuest && isAuthenticated) {
+    // Redirect to dashboard if already logged in
+    next('/')
+  } else if (requiresManager && !isManager) {
+    // Redirect to dashboard if not manager
+    next('/')
+  } else {
+    next()
+  }
 })
 
 const pinia = createPinia()
