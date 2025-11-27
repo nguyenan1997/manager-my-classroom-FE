@@ -273,18 +273,17 @@ const handleManagerLogin = async () => {
   isLoading.value = true
 
   try {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 500))
-    
-    const success = store.loginManager({
+    const result = await store.loginManager({
       email: managerLoginForm.value.email,
       password: managerLoginForm.value.password
     })
 
-    if (success) {
+    // Handle both old format (boolean) and new format (object)
+    if (result === true || (result && result.success === true)) {
       router.push('/')
     } else {
-      managerError.value = 'Email hoặc mật khẩu không đúng'
+      // Show error message from API or default message
+      managerError.value = (result && result.message) || 'Email hoặc mật khẩu không đúng'
     }
   } catch (error) {
     managerError.value = 'Đã có lỗi xảy ra. Vui lòng thử lại.'

@@ -1,23 +1,12 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { API_BASE_URL } from '../config/constants'
+import { API_ENDPOINTS, setAuthToken, removeAuthToken } from '../config/api'
 
 export const useAppStore = defineStore('app', () => {
   // Authentication
   const currentUser = ref(null)
   const userRole = ref(null) // 'manager' or 'parent'
-  
-  // Managers (for demo, stored in memory)
-  const managers = ref([
-    // Default manager for testing
-    {
-      id: '1',
-      name: 'Admin',
-      email: 'admin@example.com',
-      phone: '0123456789',
-      password: 'admin123', // In real app, this should be hashed
-      createdAt: new Date().toISOString()
-    }
-  ])
   
   // Students & Parents
   const students = ref([])
@@ -180,68 +169,84 @@ export const useAppStore = defineStore('app', () => {
   }
 
   // Authentication Actions
-  const registerManager = (managerData) => {
-    // Check if email or phone already exists
-    const existingManager = managers.value.find(
-      m => m.email === managerData.email || m.phone === managerData.phone
-    )
-    
-    if (existingManager) {
-      return false
-    }
+  const loginManager = async (credentials) => {
+    try {
+      const url = `${API_BASE_URL}${API_ENDPOINTS.AUTH.LOGIN}`
+      
+      // Call API to login manager
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          email: credentials.email,
+          password: credentials.password
+        })
+      })
 
-    const newManager = {
-      id: Date.now().toString(),
-      ...managerData,
-      createdAt: new Date().toISOString()
-    }
-    managers.value.push(newManager)
-    
-    // Auto login after registration
-    currentUser.value = {
-      id: newManager.id,
-      name: newManager.name,
-      email: newManager.email,
-      role: 'manager'
-    }
-    userRole.value = 'manager'
-    
-    // Save to localStorage
-    localStorage.setItem('currentUser', JSON.stringify(currentUser.value))
-    localStorage.setItem('userRole', userRole.value)
-    
-    return true
-  }
+      // Check if response is ok before parsing JSON
+      let result
+      try {
+        result = await response.json()
+      } catch (parseError) {
+        return { success: false, message: 'Định dạng phản hồi không hợp lệ' }
+      }
 
-  const loginManager = (credentials) => {
-    const manager = managers.value.find(
-      m => m.email === credentials.email && m.password === credentials.password
-    )
-    
-    if (!manager) {
-      return false
-    }
+      // Check if response is successful
+      if (!response.ok) {
+        const errorMessage = result.message || 'Đăng nhập thất bại'
+        return { success: false, message: errorMessage }
+      }
 
-    currentUser.value = {
-      id: manager.id,
-      name: manager.name,
-      email: manager.email,
-      role: 'manager'
+      // Check success field (some APIs might not have this field)
+      if (result.success === false) {
+        const errorMessage = result.message || 'Email hoặc mật khẩu không đúng'
+        return { success: false, message: errorMessage }
+      }
+
+      // If response is ok but no success field, assume it's successful if we have data
+      if (result.success !== true && !result.data) {
+        return { success: false, message: 'Định dạng phản hồi không hợp lệ' }
+      }
+
+      // Save token
+      if (result.data && result.data.token) {
+        setAuthToken(result.data.token)
+      }
+
+      // Save user info
+      if (result.data && result.data.user) {
+        currentUser.value = {
+          id: result.data.user.id,
+          email: result.data.user.email,
+          role: result.data.user.role || 'admin',
+          name: result.data.user.name || 'Quản lý'
+        }
+        userRole.value = 'manager'
+        
+        // Save to localStorage
+        localStorage.setItem('currentUser', JSON.stringify(currentUser.value))
+        localStorage.setItem('userRole', userRole.value)
+        
+        return { success: true }
+      }
+
+      return { success: false, message: 'Không có dữ liệu người dùng trong phản hồi' }
+    } catch (error) {
+      // Check if it's a network error
+      if (error.message.includes('fetch') || error.message.includes('Network')) {
+        return { success: false, message: 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.' }
+      }
+      
+      return { success: false, message: 'Đã có lỗi xảy ra. Vui lòng thử lại.' }
     }
-    userRole.value = 'manager'
-    
-    // Save to localStorage
-    localStorage.setItem('currentUser', JSON.stringify(currentUser.value))
-    localStorage.setItem('userRole', userRole.value)
-    
-    return true
   }
 
   const registerParent = async (parentData) => {
     try {
       // Call API to register parent
-      // TODO: Replace with actual API endpoint
-      const response = await fetch('/api/parents/register', {
+      const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.PARENTS.REGISTER}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -278,7 +283,6 @@ export const useAppStore = defineStore('app', () => {
       
       return true
     } catch (error) {
-      console.error('Register parent error:', error)
       // Fallback for demo: check if email or phone already exists
       const existingParent = parents.value.find(
         p => p.email === parentData.email || p.phone === parentData.phone
@@ -322,8 +326,7 @@ export const useAppStore = defineStore('app', () => {
   const loginParent = async (credentials) => {
     try {
       // Call API to login parent
-      // TODO: Replace with actual API endpoint
-      const response = await fetch('/api/parents/login', {
+      const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.PARENTS.LOGIN}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -363,7 +366,6 @@ export const useAppStore = defineStore('app', () => {
       
       return true
     } catch (error) {
-      console.error('Login parent error:', error)
       // Fallback for demo: check local parents array
       const identifier = credentials.identifier.toLowerCase()
       const parent = parents.value.find(p => 
@@ -410,16 +412,19 @@ export const useAppStore = defineStore('app', () => {
     userRole.value = null
     localStorage.removeItem('currentUser')
     localStorage.removeItem('userRole')
+    removeAuthToken()
   }
 
   const checkAuth = () => {
     // Check localStorage for persisted session
     const savedUser = localStorage.getItem('currentUser')
     const savedRole = localStorage.getItem('userRole')
+    const savedToken = localStorage.getItem('token')
     
-    if (savedUser && savedRole) {
+    if (savedUser && savedRole && savedToken) {
       currentUser.value = JSON.parse(savedUser)
       userRole.value = savedRole
+      // Token is already in localStorage, no need to set it again
     }
   }
 
@@ -439,7 +444,6 @@ export const useAppStore = defineStore('app', () => {
     // Auth State
     currentUser,
     userRole,
-    managers,
     isAuthenticated,
     isManager,
     isParent,
@@ -449,7 +453,6 @@ export const useAppStore = defineStore('app', () => {
     classes,
     subscriptions,
     // Auth Actions
-    registerManager,
     loginManager,
     registerParent,
     loginParent,
