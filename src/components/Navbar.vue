@@ -54,6 +54,13 @@
             >
               Lớp học
             </router-link>
+            <router-link
+              to="/subscriptions"
+              class="text-gray-700 hover:text-primary-600 transition-colors duration-200"
+              active-class="text-primary-600 font-semibold"
+            >
+              Gói học
+            </router-link>
           </template>
         </div>
 

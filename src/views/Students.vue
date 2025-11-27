@@ -46,6 +46,7 @@
             <th class="text-left py-3 px-4 font-semibold text-gray-700">Lớp</th>
             <th v-if="store.isManager" class="text-left py-3 px-4 font-semibold text-gray-700">Phụ huynh</th>
             <th class="text-left py-3 px-4 font-semibold text-gray-700">Ngày tạo</th>
+            <th class="text-right py-3 px-4 font-semibold text-gray-700">Thao tác</th>
           </tr>
         </thead>
         <tbody>
@@ -78,12 +79,31 @@
             </td>
             <td class="py-3 px-4 text-gray-600 text-sm">{{ formatDate(student.createdAt || student.created_at) }}</td>
             <td class="py-3 px-4">
-              <!-- Chức năng sửa và xóa chưa có API, ẩn nút -->
-              <span class="text-gray-400 text-sm">-</span>
+              <div v-if="store.isManager || (store.isParent && canEditStudent(student))" class="flex justify-end space-x-2">
+                <button
+                  @click="openEditModal(student)"
+                  class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                  title="Chỉnh sửa"
+                >
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                </button>
+                <button
+                  @click="confirmDelete(student)"
+                  class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  title="Xóa"
+                >
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              </div>
+              <span v-else class="text-gray-400 text-sm">-</span>
             </td>
           </tr>
           <tr v-if="filteredStudents.length === 0">
-            <td :colspan="store.isManager ? 7 : 5" class="py-8 text-center text-gray-500">
+            <td :colspan="store.isManager ? 7 : 6" class="py-8 text-center text-gray-500">
               Không tìm thấy học sinh nào
             </td>
           </tr>
@@ -160,12 +180,25 @@ const closeModal = () => {
   selectedStudent.value = null
 }
 
+const canEditStudent = (student) => {
+  // Parent chỉ có thể sửa/xóa con của mình
+  if (store.isParent && store.currentUser?.id) {
+    return (student.parent_id === store.currentUser.id || student.parentId === store.currentUser.id)
+  }
+  return false
+}
+
 const handleSubmit = async (formData) => {
-  // Chức năng sửa học sinh chưa có API, chỉ cho phép thêm mới
   if (selectedStudent.value) {
-    // Update chưa có API, hiển thị thông báo
-    alert('Chức năng sửa học sinh chưa được hỗ trợ')
-    return
+    // Update student
+    const result = await store.updateStudent(selectedStudent.value.id, formData)
+    if (!result.success) {
+      alert(result.message || 'Cập nhật học sinh thất bại')
+    } else {
+      closeModal()
+      // Reload students
+      await store.loadStudents()
+    }
   } else {
     // Add new student
     if (store.isParent) {
@@ -216,9 +249,18 @@ const handleSubmit = async (formData) => {
   }
 }
 
-const confirmDelete = (student) => {
-  // Chức năng xóa học sinh chưa có API
-  alert('Chức năng xóa học sinh chưa được hỗ trợ')
+const confirmDelete = async (student) => {
+  if (!confirm(`Bạn có chắc chắn muốn xóa học sinh "${student.name}"?`)) {
+    return
+  }
+  
+  const result = await store.deleteStudent(student.id)
+  if (!result.success) {
+    alert(result.message || 'Xóa học sinh thất bại')
+  } else {
+    // Reload students
+    await store.loadStudents()
+  }
 }
 
 const formatDate = (dateString) => {

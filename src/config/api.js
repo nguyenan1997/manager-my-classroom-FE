@@ -16,13 +16,29 @@ export const API_ENDPOINTS = {
   STUDENTS: {
     CREATE: '/api/students',
     MY_CHILDREN: '/api/students/my-children', // For parent to get their children
-    GET_BY_ID: '/api/students' // Will append /{id}
-    // UPDATE and DELETE endpoints chưa có API
+    GET_BY_ID: '/api/students', // Will append /{id}
+    UPDATE: '/api/students', // Will append /{id}
+    DELETE: '/api/students', // Will append /{id}
+    GET_CLASSES: '/api/students' // Will append /{student_id}/classes
+  },
+  PARENTS: {
+    UPDATE: '/api/parents', // Will append /{id}
+    DELETE: '/api/parents' // Will append /{id}
   },
   CLASSES: {
     CREATE: '/api/classes',
     LIST: '/api/classes',
-    REGISTER: '/api/classes' // Will append /{class_id}/register
+    REGISTER: '/api/classes', // Will append /{class_id}/register
+    UPDATE: '/api/classes', // Will append /{id}
+    DELETE: '/api/classes' // Will append /{id}
+  },
+  SUBSCRIPTIONS: {
+    CREATE: '/api/subscriptions',
+    LIST: '/api/subscriptions', // Get all subscriptions
+    GET_BY_ID: '/api/subscriptions', // Will append /{id}
+    UPDATE: '/api/subscriptions', // Will append /{id}
+    DELETE: '/api/subscriptions', // Will append /{id}
+    USE_SESSION: '/api/subscriptions' // Will append /{id}/use
   }
 }
 

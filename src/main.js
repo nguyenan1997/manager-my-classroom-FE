@@ -8,6 +8,7 @@ import Students from './views/Students.vue'
 import StudentDetail from './views/StudentDetail.vue'
 import Classes from './views/Classes.vue'
 import Subscriptions from './views/Subscriptions.vue'
+import SubscriptionDetail from './views/SubscriptionDetail.vue'
 import Auth from './views/Auth.vue'
 import { useAppStore } from './stores/useAppStore'
 
@@ -46,7 +47,13 @@ const routes = [
     path: '/subscriptions',
     name: 'Subscriptions',
     component: Subscriptions,
-    meta: { requiresAuth: true, requiresManager: true }
+    meta: { requiresAuth: true } // Both manager and parent can access
+  },
+  {
+    path: '/subscriptions/:id',
+    name: 'SubscriptionDetail',
+    component: SubscriptionDetail,
+    meta: { requiresAuth: true }
   },
 ]
 

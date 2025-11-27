@@ -71,6 +71,26 @@
             <h3 class="text-xl font-semibold text-gray-900 mb-1">{{ classItem.name }}</h3>
             <p class="text-sm text-blue-600 font-medium">{{ classItem.subject }}</p>
           </div>
+          <div v-if="store.isManager" class="flex space-x-2">
+            <button
+              @click="openEditModal(classItem)"
+              class="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+              title="Chỉnh sửa"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            </button>
+            <button
+              @click="confirmDelete(classItem)"
+              class="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
+              title="Xóa"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          </div>
         </div>
 
         <div class="space-y-3 text-sm text-gray-600">
@@ -237,11 +257,22 @@ const closeModal = () => {
   selectedClass.value = null
 }
 
+const openEditModal = (classItem) => {
+  selectedClass.value = classItem
+  showModal.value = true
+}
+
 const handleSubmit = async (formData) => {
   if (selectedClass.value) {
-    // Update chưa có API
-    alert('Chức năng sửa lớp học chưa được hỗ trợ')
-    return
+    // Update class
+    const result = await store.updateClass(selectedClass.value.id, formData)
+    if (!result.success) {
+      alert(result.message || 'Cập nhật lớp học thất bại')
+    } else {
+      closeModal()
+      // Reload classes
+      await store.loadClasses(selectedDay.value || null)
+    }
   } else {
     // Create new class
     const result = await store.addClass(formData)
@@ -252,6 +283,20 @@ const handleSubmit = async (formData) => {
       // Reload classes
       await store.loadClasses(selectedDay.value || null)
     }
+  }
+}
+
+const confirmDelete = async (classItem) => {
+  if (!confirm(`Bạn có chắc chắn muốn xóa lớp học "${classItem.name}"?`)) {
+    return
+  }
+  
+  const result = await store.deleteClass(classItem.id)
+  if (!result.success) {
+    alert(result.message || 'Xóa lớp học thất bại')
+  } else {
+    // Reload classes
+    await store.loadClasses(selectedDay.value || null)
   }
 }
 

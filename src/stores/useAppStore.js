@@ -56,24 +56,96 @@ export const useAppStore = defineStore('app', () => {
     }
   }
 
-  const updateStudent = (id, updates) => {
-    const index = students.value.findIndex(s => s.id === id)
-    if (index !== -1) {
-      students.value[index] = { ...students.value[index], ...updates }
-      return students.value[index]
+  const updateStudent = async (id, updates) => {
+    try {
+      const endpoint = `${API_ENDPOINTS.STUDENTS.UPDATE}/${id}`
+      const response = await axiosInstance.put(endpoint, {
+        name: updates.name,
+        dob: updates.dob,
+        gender: updates.gender,
+        current_grade: updates.current_grade
+      })
+
+      const result = response.data
+
+      if (result.success === false) {
+        return { success: false, message: result.message || result.error }
+      }
+
+      // Update local store
+      const updatedStudent = result.data?.student || result.data || result
+      const index = students.value.findIndex(s => s.id === id)
+      if (index !== -1) {
+        students.value[index] = updatedStudent
+      }
+
+      return { success: true, data: updatedStudent }
+    } catch (error) {
+      if (error.response) {
+        return { success: false, message: error.response.data?.message || error.response.data?.error }
+      } else if (error.request) {
+        return { success: false, message: 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.' }
+      } else {
+        return { success: false, message: 'Đã có lỗi xảy ra. Vui lòng thử lại.' }
+      }
     }
-    return null
   }
 
-  const deleteStudent = (id) => {
-    const index = students.value.findIndex(s => s.id === id)
-    if (index !== -1) {
-      students.value.splice(index, 1)
+  const deleteStudent = async (id) => {
+    try {
+      const endpoint = `${API_ENDPOINTS.STUDENTS.DELETE}/${id}`
+      const response = await axiosInstance.delete(endpoint)
+
+      const result = response.data
+
+      if (result.success === false) {
+        return { success: false, message: result.message || result.error }
+      }
+
+      // Remove from local store
+      const index = students.value.findIndex(s => s.id === id)
+      if (index !== -1) {
+        students.value.splice(index, 1)
+      }
       // Also delete related subscriptions
-      subscriptions.value = subscriptions.value.filter(sub => sub.studentId !== id)
-      return true
+      subscriptions.value = subscriptions.value.filter(sub => 
+        (sub.studentId !== id && sub.student_id !== id)
+      )
+
+      return { success: true }
+    } catch (error) {
+      if (error.response) {
+        return { success: false, message: error.response.data?.message || error.response.data?.error }
+      } else if (error.request) {
+        return { success: false, message: 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.' }
+      } else {
+        return { success: false, message: 'Đã có lỗi xảy ra. Vui lòng thử lại.' }
+      }
     }
-    return false
+  }
+
+  const getStudentClasses = async (studentId) => {
+    try {
+      const endpoint = `${API_ENDPOINTS.STUDENTS.GET_CLASSES}/${studentId}/classes`
+      const response = await axiosInstance.get(endpoint)
+      const result = response.data
+
+      if (result.success === false) {
+        return { success: false, message: result.message || result.error }
+      }
+
+      // Extract classes array from response
+      const classesList = result.data?.classes || result.data || result.classes || []
+      return { success: true, data: classesList }
+    } catch (error) {
+      if (error.response) {
+        return { success: false, message: error.response.data?.message || error.response.data?.error }
+      } else if (error.request) {
+        return { success: false, message: 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.' }
+      } else {
+        return { success: false, message: 'Đã có lỗi xảy ra. Vui lòng thử lại.' }
+      }
+    }
   }
 
   const getStudentById = (id) => {
@@ -154,22 +226,67 @@ export const useAppStore = defineStore('app', () => {
     return newParent
   }
 
-  const updateParent = (id, updates) => {
-    const index = parents.value.findIndex(p => p.id === id)
-    if (index !== -1) {
-      parents.value[index] = { ...parents.value[index], ...updates }
-      return parents.value[index]
+  const updateParent = async (id, updates) => {
+    try {
+      const endpoint = `${API_ENDPOINTS.PARENTS.UPDATE}/${id}`
+      const response = await axiosInstance.put(endpoint, {
+        name: updates.name,
+        phone: updates.phone,
+        email: updates.email
+      })
+
+      const result = response.data
+
+      if (result.success === false) {
+        return { success: false, message: result.message || result.error }
+      }
+
+      // Update local store
+      const updatedParent = result.data?.parent || result.data || result
+      const index = parents.value.findIndex(p => p.id === id)
+      if (index !== -1) {
+        parents.value[index] = updatedParent
+      }
+
+      return { success: true, data: updatedParent }
+    } catch (error) {
+      if (error.response) {
+        return { success: false, message: error.response.data?.message || error.response.data?.error }
+      } else if (error.request) {
+        return { success: false, message: 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.' }
+      } else {
+        return { success: false, message: 'Đã có lỗi xảy ra. Vui lòng thử lại.' }
+      }
     }
-    return null
   }
 
-  const deleteParent = (id) => {
-    const index = parents.value.findIndex(p => p.id === id)
-    if (index !== -1) {
-      parents.value.splice(index, 1)
-      return true
+  const deleteParent = async (id) => {
+    try {
+      const endpoint = `${API_ENDPOINTS.PARENTS.DELETE}/${id}`
+      const response = await axiosInstance.delete(endpoint)
+
+      const result = response.data
+
+      if (result.success === false) {
+        return { success: false, message: result.message || result.error }
+      }
+
+      // Remove from local store
+      const index = parents.value.findIndex(p => p.id === id)
+      if (index !== -1) {
+        parents.value.splice(index, 1)
+      }
+
+      return { success: true }
+    } catch (error) {
+      if (error.response) {
+        return { success: false, message: error.response.data?.message || error.response.data?.error }
+      } else if (error.request) {
+        return { success: false, message: 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.' }
+      } else {
+        return { success: false, message: 'Đã có lỗi xảy ra. Vui lòng thử lại.' }
+      }
     }
-    return false
   }
 
   // Classes Actions
@@ -263,22 +380,70 @@ export const useAppStore = defineStore('app', () => {
     }
   }
 
-  const updateClass = (id, updates) => {
-    const index = classes.value.findIndex(c => c.id === id)
-    if (index !== -1) {
-      classes.value[index] = { ...classes.value[index], ...updates }
-      return classes.value[index]
+  const updateClass = async (id, updates) => {
+    try {
+      const endpoint = `${API_ENDPOINTS.CLASSES.UPDATE}/${id}`
+      const response = await axiosInstance.put(endpoint, {
+        name: updates.name,
+        subject: updates.subject,
+        day_of_week: updates.day_of_week,
+        time_slot: updates.time_slot,
+        teacher_name: updates.teacher_name,
+        max_students: updates.max_students
+      })
+
+      const result = response.data
+
+      if (result.success === false) {
+        return { success: false, message: result.message || result.error }
+      }
+
+      // Update local store
+      const updatedClass = result.data?.class || result.data || result
+      const index = classes.value.findIndex(c => c.id === id)
+      if (index !== -1) {
+        classes.value[index] = updatedClass
+      }
+
+      return { success: true, data: updatedClass }
+    } catch (error) {
+      if (error.response) {
+        return { success: false, message: error.response.data?.message || error.response.data?.error }
+      } else if (error.request) {
+        return { success: false, message: 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.' }
+      } else {
+        return { success: false, message: 'Đã có lỗi xảy ra. Vui lòng thử lại.' }
+      }
     }
-    return null
   }
 
-  const deleteClass = (id) => {
-    const index = classes.value.findIndex(c => c.id === id)
-    if (index !== -1) {
-      classes.value.splice(index, 1)
-      return true
+  const deleteClass = async (id) => {
+    try {
+      const endpoint = `${API_ENDPOINTS.CLASSES.DELETE}/${id}`
+      const response = await axiosInstance.delete(endpoint)
+
+      const result = response.data
+
+      if (result.success === false) {
+        return { success: false, message: result.message || result.error }
+      }
+
+      // Remove from local store
+      const index = classes.value.findIndex(c => c.id === id)
+      if (index !== -1) {
+        classes.value.splice(index, 1)
+      }
+
+      return { success: true }
+    } catch (error) {
+      if (error.response) {
+        return { success: false, message: error.response.data?.message || error.response.data?.error }
+      } else if (error.request) {
+        return { success: false, message: 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.' }
+      } else {
+        return { success: false, message: 'Đã có lỗi xảy ra. Vui lòng thử lại.' }
+      }
     }
-    return false
   }
 
   const getClassById = (id) => {
@@ -286,48 +451,195 @@ export const useAppStore = defineStore('app', () => {
   }
 
   // Subscriptions Actions
-  const addSubscription = (subscription) => {
-    const newSubscription = {
-      id: Date.now().toString(),
-      totalSessions: subscription.totalSessions || 0,
-      usedSessions: 0,
-      remainingSessions: subscription.totalSessions || 0,
-      ...subscription,
-      createdAt: new Date().toISOString()
+  const loadSubscriptions = async (studentId = null) => {
+    try {
+      const params = {}
+      if (studentId) {
+        params.student_id = studentId
+      }
+      
+      const response = await axiosInstance.get(API_ENDPOINTS.SUBSCRIPTIONS.LIST, { params })
+      const result = response.data
+
+      if (result.success === false) {
+        console.error('Failed to load subscriptions:', result.message || result.error)
+        return { success: false, message: result.message || result.error }
+      }
+
+      // Extract subscriptions array from response
+      // Response structure: { success: true, count: 3, data: [...] }
+      const subscriptionsList = result.data || []
+      subscriptions.value = Array.isArray(subscriptionsList) ? subscriptionsList : []
+
+      return { success: true, count: result.count || subscriptionsList.length }
+    } catch (error) {
+      if (error.response) {
+        console.error('Failed to load subscriptions:', error.response.data?.message || error.response.data?.error)
+        return { success: false, message: error.response.data?.message || error.response.data?.error }
+      } else if (error.request) {
+        console.error('Failed to load subscriptions: No response from server')
+        return { success: false, message: 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.' }
+      } else {
+        console.error('Failed to load subscriptions:', error.message)
+        return { success: false, message: 'Đã có lỗi xảy ra. Vui lòng thử lại.' }
+      }
     }
-    subscriptions.value.push(newSubscription)
-    return newSubscription
   }
 
-  const updateSubscription = (id, updates) => {
-    const index = subscriptions.value.findIndex(s => s.id === id)
-    if (index !== -1) {
-      const updated = { ...subscriptions.value[index], ...updates }
-      // Recalculate remaining sessions
-      updated.remainingSessions = updated.totalSessions - updated.usedSessions
-      subscriptions.value[index] = updated
-      return updated
+  const addSubscription = async (subscriptionData) => {
+    try {
+      const response = await axiosInstance.post(API_ENDPOINTS.SUBSCRIPTIONS.CREATE, {
+        student_id: subscriptionData.student_id,
+        package_name: subscriptionData.package_name,
+        total_sessions: subscriptionData.total_sessions,
+        start_date: subscriptionData.start_date,
+        end_date: subscriptionData.end_date || null
+      })
+
+      const result = response.data
+
+      if (result.success === false) {
+        return { success: false, message: result.message || result.error }
+      }
+
+      // Extract subscription data from response
+      const subscription = result.data?.subscription || result.data || result
+      
+      // Add to local store
+      subscriptions.value.push(subscription)
+      
+      return { success: true, data: subscription }
+    } catch (error) {
+      if (error.response) {
+        return { success: false, message: error.response.data?.message || error.response.data?.error }
+      } else if (error.request) {
+        return { success: false, message: 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.' }
+      } else {
+        return { success: false, message: 'Đã có lỗi xảy ra. Vui lòng thử lại.' }
+      }
     }
-    return null
   }
 
-  const useSession = (subscriptionId) => {
-    const subscription = subscriptions.value.find(s => s.id === subscriptionId)
-    if (subscription && subscription.remainingSessions > 0) {
-      subscription.usedSessions += 1
-      subscription.remainingSessions -= 1
-      return true
+  const fetchSubscriptionById = async (id) => {
+    try {
+      const endpoint = `${API_ENDPOINTS.SUBSCRIPTIONS.GET_BY_ID}/${id}`
+      const response = await axiosInstance.get(endpoint)
+      const result = response.data
+
+      if (result.success === false) {
+        return { success: false, message: result.message || result.error }
+      }
+
+      // Extract subscription data from response
+      const subscription = result.data?.subscription || result.data || result
+      
+      return { success: true, data: subscription }
+    } catch (error) {
+      if (error.response) {
+        return { success: false, message: error.response.data?.message || error.response.data?.error }
+      } else if (error.request) {
+        return { success: false, message: 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.' }
+      } else {
+        return { success: false, message: 'Đã có lỗi xảy ra. Vui lòng thử lại.' }
+      }
     }
-    return false
   }
 
-  const deleteSubscription = (id) => {
-    const index = subscriptions.value.findIndex(s => s.id === id)
-    if (index !== -1) {
-      subscriptions.value.splice(index, 1)
-      return true
+  const useSession = async (subscriptionId) => {
+    try {
+      const endpoint = `${API_ENDPOINTS.SUBSCRIPTIONS.USE_SESSION}/${subscriptionId}/use`
+      const response = await axiosInstance.patch(endpoint)
+
+      const result = response.data
+
+      if (result.success === false) {
+        return { success: false, message: result.message || result.error }
+      }
+
+      // Update local store
+      const subscription = subscriptions.value.find(s => s.id === subscriptionId)
+      if (subscription) {
+        const updatedSubscription = result.data?.subscription || result.data || result
+        const index = subscriptions.value.findIndex(s => s.id === subscriptionId)
+        if (index !== -1) {
+          subscriptions.value[index] = updatedSubscription
+        }
+      }
+
+      return { success: true, data: result.data }
+    } catch (error) {
+      if (error.response) {
+        return { success: false, message: error.response.data?.message || error.response.data?.error }
+      } else if (error.request) {
+        return { success: false, message: 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.' }
+      } else {
+        return { success: false, message: 'Đã có lỗi xảy ra. Vui lòng thử lại.' }
+      }
     }
-    return false
+  }
+
+  const updateSubscription = async (id, updates) => {
+    try {
+      const endpoint = `${API_ENDPOINTS.SUBSCRIPTIONS.UPDATE}/${id}`
+      const response = await axiosInstance.put(endpoint, {
+        package_name: updates.package_name,
+        total_sessions: updates.total_sessions,
+        start_date: updates.start_date,
+        end_date: updates.end_date || null
+      })
+
+      const result = response.data
+
+      if (result.success === false) {
+        return { success: false, message: result.message || result.error }
+      }
+
+      // Update local store
+      const updatedSubscription = result.data?.subscription || result.data || result
+      const index = subscriptions.value.findIndex(s => s.id === id)
+      if (index !== -1) {
+        subscriptions.value[index] = updatedSubscription
+      }
+
+      return { success: true, data: updatedSubscription }
+    } catch (error) {
+      if (error.response) {
+        return { success: false, message: error.response.data?.message || error.response.data?.error }
+      } else if (error.request) {
+        return { success: false, message: 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.' }
+      } else {
+        return { success: false, message: 'Đã có lỗi xảy ra. Vui lòng thử lại.' }
+      }
+    }
+  }
+
+  const deleteSubscription = async (id) => {
+    try {
+      const endpoint = `${API_ENDPOINTS.SUBSCRIPTIONS.DELETE}/${id}`
+      const response = await axiosInstance.delete(endpoint)
+
+      const result = response.data
+
+      if (result.success === false) {
+        return { success: false, message: result.message || result.error }
+      }
+
+      // Remove from local store
+      const index = subscriptions.value.findIndex(s => s.id === id)
+      if (index !== -1) {
+        subscriptions.value.splice(index, 1)
+      }
+
+      return { success: true }
+    } catch (error) {
+      if (error.response) {
+        return { success: false, message: error.response.data?.message || error.response.data?.error }
+      } else if (error.request) {
+        return { success: false, message: 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.' }
+      } else {
+        return { success: false, message: 'Đã có lỗi xảy ra. Vui lòng thử lại.' }
+      }
+    }
   }
 
   const getSubscriptionById = (id) => {
@@ -335,7 +647,7 @@ export const useAppStore = defineStore('app', () => {
   }
 
   const getSubscriptionsByStudent = (studentId) => {
-    return subscriptions.value.filter(s => s.studentId === studentId)
+    return subscriptions.value.filter(s => s.studentId === studentId || s.student_id === studentId)
   }
 
   // Authentication Actions
@@ -594,6 +906,7 @@ export const useAppStore = defineStore('app', () => {
     getStudentById,
     fetchStudentById,
     loadStudents,
+    getStudentClasses,
     // Parents Actions
     addParent,
     updateParent,
@@ -606,7 +919,9 @@ export const useAppStore = defineStore('app', () => {
     deleteClass,
     getClassById,
     // Subscriptions Actions
+    loadSubscriptions,
     addSubscription,
+    fetchSubscriptionById,
     updateSubscription,
     useSession,
     deleteSubscription,
