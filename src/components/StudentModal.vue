@@ -27,58 +27,43 @@
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Ngày sinh *</label>
               <input
-                v-model="formData.email"
-                type="email"
+                v-model="formData.dob"
+                type="date"
+                required
                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                placeholder="email@example.com"
               />
             </div>
 
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Số điện thoại *</label>
-              <input
-                v-model="formData.phone"
-                type="tel"
+              <label class="block text-sm font-medium text-gray-700 mb-1">Giới tính *</label>
+              <select
+                v-model="formData.gender"
                 required
                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                placeholder="0123456789"
-              />
+              >
+                <option value="">Chọn giới tính</option>
+                <option value="male">Nam</option>
+                <option value="female">Nữ</option>
+              </select>
             </div>
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Ngày sinh</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Lớp hiện tại *</label>
             <input
-              v-model="formData.dateOfBirth"
-              type="date"
+              v-model="formData.current_grade"
+              type="text"
+              required
               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              placeholder="Ví dụ: 5, 6, 7, 8, 9, 10, 11, 12"
             />
+            <p class="text-xs text-gray-500 mt-1">Nhập lớp hiện tại của học sinh</p>
           </div>
 
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Địa chỉ</label>
-            <textarea
-              v-model="formData.address"
-              rows="3"
-              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              placeholder="Nhập địa chỉ"
-            ></textarea>
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label>
-            <textarea
-              v-model="formData.notes"
-              rows="2"
-              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              placeholder="Ghi chú về học sinh"
-            ></textarea>
-          </div>
-
-          <!-- Parent Information -->
-          <div class="border-t pt-4">
+          <!-- Parent Information - Chỉ hiển thị cho Manager -->
+          <div v-if="isManager" class="border-t pt-4">
             <h3 class="text-lg font-semibold mb-4">Thông tin phụ huynh</h3>
             
             <div>
@@ -136,7 +121,8 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
+import { useAppStore } from '../stores/useAppStore'
 
 const props = defineProps({
   show: Boolean,
@@ -145,29 +131,40 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'submit'])
 
+const store = useAppStore()
 const isEdit = ref(false)
+const isManager = computed(() => store.isManager)
+
 const formData = ref({
   name: '',
-  email: '',
-  phone: '',
-  dateOfBirth: '',
-  address: '',
-  notes: '',
+  dob: '',
+  gender: '',
+  current_grade: '',
   parentName: '',
   parentPhone: '',
   parentEmail: ''
 })
+
+const resetForm = () => {
+  formData.value = {
+    name: '',
+    dob: '',
+    gender: '',
+    current_grade: '',
+    parentName: '',
+    parentPhone: '',
+    parentEmail: ''
+  }
+}
 
 watch(() => props.student, (newStudent) => {
   if (newStudent) {
     isEdit.value = true
     formData.value = {
       name: newStudent.name || '',
-      email: newStudent.email || '',
-      phone: newStudent.phone || '',
-      dateOfBirth: newStudent.dateOfBirth || '',
-      address: newStudent.address || '',
-      notes: newStudent.notes || '',
+      dob: newStudent.dob || newStudent.dateOfBirth || '',
+      gender: newStudent.gender || '',
+      current_grade: newStudent.current_grade || '',
       parentName: newStudent.parentName || '',
       parentPhone: newStudent.parentPhone || '',
       parentEmail: newStudent.parentEmail || ''
@@ -183,20 +180,6 @@ watch(() => props.show, (newShow) => {
     resetForm()
   }
 })
-
-const resetForm = () => {
-  formData.value = {
-    name: '',
-    email: '',
-    phone: '',
-    dateOfBirth: '',
-    address: '',
-    notes: '',
-    parentName: '',
-    parentPhone: '',
-    parentEmail: ''
-  }
-}
 
 const handleSubmit = () => {
   emit('submit', { ...formData.value })

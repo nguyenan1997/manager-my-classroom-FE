@@ -18,14 +18,42 @@ export const useAppStore = defineStore('app', () => {
   const subscriptions = ref([])
 
   // Students & Parents Actions
-  const addStudent = (student) => {
-    const newStudent = {
-      id: Date.now().toString(),
-      ...student,
-      createdAt: new Date().toISOString()
+  const addStudent = async (studentData) => {
+    try {
+      // Determine parent_id: use from studentData if provided (manager), otherwise use currentUser.id (parent)
+      const parentId = studentData.parent_id || currentUser.value?.id
+      
+      // Call API to create student
+      const response = await axiosInstance.post(API_ENDPOINTS.STUDENTS.CREATE, {
+        name: studentData.name,
+        parent_id: parentId,
+        dob: studentData.dob,
+        gender: studentData.gender,
+        current_grade: studentData.current_grade
+      })
+
+      const result = response.data
+
+      if (result.success === false) {
+        return { success: false, message: result.message || result.error }
+      }
+
+      // Extract student data from response
+      const student = result.data?.student || result.data || result
+      
+      // Add to local store
+      students.value.push(student)
+      
+      return { success: true, data: student }
+    } catch (error) {
+      if (error.response) {
+        return { success: false, message: error.response.data?.message || error.response.data?.error }
+      } else if (error.request) {
+        return { success: false, message: 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.' }
+      } else {
+        return { success: false, message: 'Đã có lỗi xảy ra. Vui lòng thử lại.' }
+      }
     }
-    students.value.push(newStudent)
-    return newStudent
   }
 
   const updateStudent = (id, updates) => {
@@ -50,6 +78,35 @@ export const useAppStore = defineStore('app', () => {
 
   const getStudentById = (id) => {
     return students.value.find(s => s.id === id)
+  }
+
+  const loadStudents = async () => {
+    try {
+      const response = await axiosInstance.get(API_ENDPOINTS.STUDENTS.LIST)
+      const result = response.data
+
+      if (result.success === false) {
+        console.error('Failed to load students:', result.message || result.error)
+        return { success: false, message: result.message || result.error }
+      }
+
+      // Extract students array from response
+      const studentsList = result.data?.students || result.data || result.students || []
+      students.value = Array.isArray(studentsList) ? studentsList : []
+
+      return { success: true }
+    } catch (error) {
+      if (error.response) {
+        console.error('Failed to load students:', error.response.data?.message || error.response.data?.error)
+        return { success: false, message: error.response.data?.message || error.response.data?.error }
+      } else if (error.request) {
+        console.error('Failed to load students: No response from server')
+        return { success: false, message: 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.' }
+      } else {
+        console.error('Failed to load students:', error.message)
+        return { success: false, message: 'Đã có lỗi xảy ra. Vui lòng thử lại.' }
+      }
+    }
   }
 
   // Parents Actions
@@ -421,6 +478,7 @@ export const useAppStore = defineStore('app', () => {
     updateStudent,
     deleteStudent,
     getStudentById,
+    loadStudents,
     // Parents Actions
     addParent,
     updateParent,

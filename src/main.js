@@ -27,7 +27,7 @@ const routes = [
     path: '/students',
     name: 'Students',
     component: Students,
-    meta: { requiresAuth: true, requiresManager: true }
+    meta: { requiresAuth: true }
   },
   {
     path: '/classes',
@@ -40,7 +40,7 @@ const routes = [
     name: 'Subscriptions',
     component: Subscriptions,
     meta: { requiresAuth: true, requiresManager: true }
-  }
+  },
 ]
 
 const router = createRouter({
@@ -60,8 +60,10 @@ router.beforeEach((to, from, next) => {
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
   const requiresGuest = to.matched.some(record => record.meta.requiresGuest)
   const requiresManager = to.matched.some(record => record.meta.requiresManager)
+  const requiresParent = to.matched.some(record => record.meta.requiresParent)
   const isAuthenticated = store.isAuthenticated
   const isManager = store.isManager
+  const isParent = store.isParent
 
   if (requiresAuth && !isAuthenticated) {
     // Redirect to login if not authenticated

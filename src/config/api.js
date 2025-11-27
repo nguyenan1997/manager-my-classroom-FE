@@ -12,6 +12,12 @@ export const API_ENDPOINTS = {
   PARENTS: {
     LOGIN: '/api/auth/parent/login',
     REGISTER: '/api/parents/register'
+  },
+  STUDENTS: {
+    CREATE: '/api/students',
+    LIST: '/api/students',
+    UPDATE: '/api/students',
+    DELETE: '/api/students'
   }
 }
 
