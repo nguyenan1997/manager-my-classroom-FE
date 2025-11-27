@@ -15,9 +15,8 @@ export const API_ENDPOINTS = {
   },
   STUDENTS: {
     CREATE: '/api/students',
-    LIST: '/api/students',
-    UPDATE: '/api/students',
-    DELETE: '/api/students'
+    MY_CHILDREN: '/api/students/my-children' // For parent to get their children
+    // UPDATE and DELETE endpoints chưa có API
   }
 }
 

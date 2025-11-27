@@ -46,7 +46,6 @@
             <th class="text-left py-3 px-4 font-semibold text-gray-700">Lớp</th>
             <th v-if="store.isManager" class="text-left py-3 px-4 font-semibold text-gray-700">Phụ huynh</th>
             <th class="text-left py-3 px-4 font-semibold text-gray-700">Ngày tạo</th>
-            <th v-if="store.isManager" class="text-right py-3 px-4 font-semibold text-gray-700">Thao tác</th>
           </tr>
         </thead>
         <tbody>
@@ -66,35 +65,16 @@
             </td>
             <td class="py-3 px-4 text-gray-700">{{ student.current_grade || '-' }}</td>
             <td v-if="store.isManager" class="py-3 px-4">
-              <div v-if="student.parentName" class="text-sm">
-                <div class="font-medium text-gray-900">{{ student.parentName }}</div>
-                <div class="text-gray-600">{{ student.parentPhone }}</div>
+              <div v-if="student.parent || student.parentName" class="text-sm">
+                <div class="font-medium text-gray-900">{{ student.parent?.name || student.parentName }}</div>
+                <div class="text-gray-600">{{ student.parent?.phone || student.parentPhone }}</div>
               </div>
               <span v-else class="text-gray-400">-</span>
             </td>
             <td class="py-3 px-4 text-gray-600 text-sm">{{ formatDate(student.createdAt || student.created_at) }}</td>
             <td class="py-3 px-4">
-              <div v-if="store.isManager" class="flex justify-end space-x-2">
-                <button
-                  @click="openEditModal(student)"
-                  class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                  title="Chỉnh sửa"
-                >
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
-                </button>
-                <button
-                  @click="confirmDelete(student)"
-                  class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                  title="Xóa"
-                >
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                </button>
-              </div>
-              <span v-else class="text-gray-400 text-sm">-</span>
+              <!-- Chức năng sửa và xóa chưa có API, ẩn nút -->
+              <span class="text-gray-400 text-sm">-</span>
             </td>
           </tr>
           <tr v-if="filteredStudents.length === 0">
@@ -126,13 +106,10 @@ const searchQuery = ref('')
 const showModal = ref(false)
 const selectedStudent = ref(null)
 
-// Load students from API on mount
+// Load students from API when component is mounted
 onMounted(async () => {
   try {
-    console.log('Students component mounted')
-    // Always try to load students from API
-    const result = await store.loadStudents()
-    console.log('Load students result:', result)
+    await store.loadStudents()
   } catch (error) {
     console.error('Error loading students:', error)
   }
@@ -142,13 +119,9 @@ const filteredStudents = computed(() => {
   try {
     let studentsList = store.students || []
     
-    // Nếu là parent, chỉ hiển thị học sinh của họ
-    if (store.isParent && store.currentUser?.id) {
-      studentsList = studentsList.filter(student => 
-        student?.parent_id === store.currentUser.id || 
-        student?.parentId === store.currentUser.id
-      )
-    }
+    // Parent đã lấy đúng danh sách từ API /api/students/my-children
+    // nên không cần filter lại nữa
+    // Manager lấy tất cả học sinh từ /api/students
     
     if (!searchQuery.value) {
       return studentsList
@@ -159,7 +132,7 @@ const filteredStudents = computed(() => {
       student?.name?.toLowerCase().includes(query) ||
       (student?.email && student.email.toLowerCase().includes(query)) ||
       (student?.phone && student.phone.includes(query)) ||
-      (student?.parentName && student.parentName.toLowerCase().includes(query))
+      (student?.parent?.name && student.parent.name.toLowerCase().includes(query))
     )
   } catch (error) {
     console.error('Error filtering students:', error)
@@ -183,33 +156,11 @@ const closeModal = () => {
 }
 
 const handleSubmit = async (formData) => {
+  // Chức năng sửa học sinh chưa có API, chỉ cho phép thêm mới
   if (selectedStudent.value) {
-    // Update existing student (chỉ manager mới có thể update)
-    if (store.isManager) {
-      store.updateStudent(selectedStudent.value.id, formData)
-      
-      // Update parent if exists
-      if (formData.parentName || formData.parentPhone || formData.parentEmail) {
-        const existingParent = store.parents.find(p => 
-          p.phone === formData.parentPhone || p.email === formData.parentEmail
-        )
-        
-        if (existingParent) {
-          store.updateParent(existingParent.id, {
-            name: formData.parentName,
-            phone: formData.parentPhone,
-            email: formData.parentEmail
-          })
-        } else {
-          store.addParent({
-            name: formData.parentName,
-            phone: formData.parentPhone,
-            email: formData.parentEmail,
-            studentId: selectedStudent.value.id
-          })
-        }
-      }
-    }
+    // Update chưa có API, hiển thị thông báo
+    alert('Chức năng sửa học sinh chưa được hỗ trợ')
+    return
   } else {
     // Add new student
     if (store.isParent) {
@@ -261,9 +212,8 @@ const handleSubmit = async (formData) => {
 }
 
 const confirmDelete = (student) => {
-  if (confirm(`Bạn có chắc chắn muốn xóa học sinh "${student.name}"?`)) {
-    store.deleteStudent(student.id)
-  }
+  // Chức năng xóa học sinh chưa có API
+  alert('Chức năng xóa học sinh chưa được hỗ trợ')
 }
 
 const formatDate = (dateString) => {

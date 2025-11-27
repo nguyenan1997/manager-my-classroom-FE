@@ -82,7 +82,14 @@ export const useAppStore = defineStore('app', () => {
 
   const loadStudents = async () => {
     try {
-      const response = await axiosInstance.get(API_ENDPOINTS.STUDENTS.LIST)
+      // Chỉ parent mới có API để load students
+      if (!isParent.value) {
+        // Manager chưa có API để load tất cả students
+        students.value = []
+        return { success: true }
+      }
+      
+      const response = await axiosInstance.get(API_ENDPOINTS.STUDENTS.MY_CHILDREN)
       const result = response.data
 
       if (result.success === false) {
@@ -91,7 +98,9 @@ export const useAppStore = defineStore('app', () => {
       }
 
       // Extract students array from response
-      const studentsList = result.data?.students || result.data || result.students || []
+      // Response structure: { success: true, count: 2, data: [...] }
+      // data is directly an array, not data.students
+      const studentsList = result.data || []
       students.value = Array.isArray(studentsList) ? studentsList : []
 
       return { success: true }
