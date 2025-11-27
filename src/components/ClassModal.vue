@@ -20,98 +20,77 @@
               v-model="formData.name"
               type="text"
               required
-              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              placeholder="Ví dụ: Toán lớp 5A"
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Ví dụ: Lớp Toán 5"
+            />
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Môn học *</label>
+            <input
+              v-model="formData.subject"
+              type="text"
+              required
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Ví dụ: Toán"
             />
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Ngày bắt đầu *</label>
-              <input
-                v-model="formData.startDate"
-                type="date"
+              <label class="block text-sm font-medium text-gray-700 mb-1">Thứ trong tuần *</label>
+              <select
+                v-model="formData.day_of_week"
                 required
-                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              />
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">Chọn thứ</option>
+                <option value="Monday">Thứ 2</option>
+                <option value="Tuesday">Thứ 3</option>
+                <option value="Wednesday">Thứ 4</option>
+                <option value="Thursday">Thứ 5</option>
+                <option value="Friday">Thứ 6</option>
+                <option value="Saturday">Thứ 7</option>
+                <option value="Sunday">Chủ nhật</option>
+              </select>
             </div>
 
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Ngày kết thúc</label>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Khung giờ học *</label>
               <input
-                v-model="formData.endDate"
-                type="date"
-                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                v-model="formData.time_slot"
+                type="text"
+                required
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Ví dụ: 18:00-19:30"
               />
+              <p class="text-xs text-gray-500 mt-1">Định dạng: HH:mm-HH:mm</p>
             </div>
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Thời gian học *</label>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Tên giáo viên *</label>
               <input
-                v-model="formData.time"
-                type="time"
+                v-model="formData.teacher_name"
+                type="text"
                 required
-                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Ví dụ: Cô Lan"
               />
             </div>
 
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Thời lượng (phút) *</label>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Số học sinh tối đa *</label>
               <input
-                v-model.number="formData.duration"
+                v-model.number="formData.max_students"
                 type="number"
                 required
-                min="30"
-                step="15"
-                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                placeholder="90"
+                min="1"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="20"
               />
             </div>
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Lịch học trong tuần *</label>
-            <div class="flex flex-wrap gap-2">
-              <label
-                v-for="day in weekDays"
-                :key="day.value"
-                class="flex items-center space-x-2 cursor-pointer"
-              >
-                <input
-                  type="checkbox"
-                  :value="day.value"
-                  v-model="formData.schedule"
-                  class="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
-                />
-                <span class="text-sm text-gray-700">{{ day.label }}</span>
-              </label>
-            </div>
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Học sinh tham gia</label>
-            <select
-              v-model="formData.studentIds"
-              multiple
-              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent min-h-[100px]"
-            >
-              <option v-for="student in students" :key="student.id" :value="student.id">
-                {{ student.name }} - {{ student.phone }}
-              </option>
-            </select>
-            <p class="text-xs text-gray-500 mt-1">Giữ Ctrl (Cmd trên Mac) để chọn nhiều học sinh</p>
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label>
-            <textarea
-              v-model="formData.notes"
-              rows="3"
-              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              placeholder="Ghi chú về lớp học"
-            ></textarea>
           </div>
 
           <div class="flex justify-end space-x-3 pt-4">
@@ -124,7 +103,7 @@
             </button>
             <button
               type="submit"
-              class="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+              class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
               {{ isEdit ? 'Cập nhật' : 'Tạo lớp' }}
             </button>
@@ -136,8 +115,7 @@
 </template>
 
 <script setup>
-import { ref, watch, computed } from 'vue'
-import { useAppStore } from '../stores/useAppStore'
+import { ref, watch } from 'vue'
 
 const props = defineProps({
   show: Boolean,
@@ -146,44 +124,37 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'submit'])
 
-const store = useAppStore()
 const isEdit = ref(false)
-
-const weekDays = [
-  { label: 'Thứ 2', value: 'monday' },
-  { label: 'Thứ 3', value: 'tuesday' },
-  { label: 'Thứ 4', value: 'wednesday' },
-  { label: 'Thứ 5', value: 'thursday' },
-  { label: 'Thứ 6', value: 'friday' },
-  { label: 'Thứ 7', value: 'saturday' },
-  { label: 'Chủ nhật', value: 'sunday' }
-]
-
-const students = computed(() => store.students)
-
 const formData = ref({
   name: '',
-  startDate: '',
-  endDate: '',
-  time: '',
-  duration: 90,
-  schedule: [],
-  studentIds: [],
-  notes: ''
+  subject: '',
+  day_of_week: '',
+  time_slot: '',
+  teacher_name: '',
+  max_students: 20
 })
+
+const resetForm = () => {
+  formData.value = {
+    name: '',
+    subject: '',
+    day_of_week: '',
+    time_slot: '',
+    teacher_name: '',
+    max_students: 20
+  }
+}
 
 watch(() => props.classData, (newClass) => {
   if (newClass) {
     isEdit.value = true
     formData.value = {
       name: newClass.name || '',
-      startDate: newClass.startDate || '',
-      endDate: newClass.endDate || '',
-      time: newClass.time || '',
-      duration: newClass.duration || 90,
-      schedule: newClass.schedule || [],
-      studentIds: newClass.studentIds || [],
-      notes: newClass.notes || ''
+      subject: newClass.subject || '',
+      day_of_week: newClass.day_of_week || '',
+      time_slot: newClass.time_slot || '',
+      teacher_name: newClass.teacher_name || '',
+      max_students: newClass.max_students || 20
     }
   } else {
     isEdit.value = false
@@ -197,19 +168,6 @@ watch(() => props.show, (newShow) => {
   }
 })
 
-const resetForm = () => {
-  formData.value = {
-    name: '',
-    startDate: '',
-    endDate: '',
-    time: '',
-    duration: 90,
-    schedule: [],
-    studentIds: [],
-    notes: ''
-  }
-}
-
 const handleSubmit = () => {
   emit('submit', { ...formData.value })
   close()
@@ -220,4 +178,3 @@ const close = () => {
   resetForm()
 }
 </script>
-

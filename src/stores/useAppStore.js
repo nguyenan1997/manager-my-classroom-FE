@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { API_BASE_URL } from '../config/constants'
-import { API_ENDPOINTS, setAuthToken, removeAuthToken } from '../config/api'
+import { API_ENDPOINTS, setAuthToken, removeAuthToken, axiosInstance } from '../config/api'
 
 export const useAppStore = defineStore('app', () => {
   // Authentication
@@ -19,38 +18,201 @@ export const useAppStore = defineStore('app', () => {
   const subscriptions = ref([])
 
   // Students & Parents Actions
-  const addStudent = (student) => {
-    const newStudent = {
-      id: Date.now().toString(),
-      ...student,
-      createdAt: new Date().toISOString()
+  const addStudent = async (studentData) => {
+    try {
+      // Determine parent_id: use from studentData if provided (manager), otherwise use currentUser.id (parent)
+      const parentId = studentData.parent_id || currentUser.value?.id
+      
+      // Call API to create student
+      const response = await axiosInstance.post(API_ENDPOINTS.STUDENTS.CREATE, {
+        name: studentData.name,
+        parent_id: parentId,
+        dob: studentData.dob,
+        gender: studentData.gender,
+        current_grade: studentData.current_grade
+      })
+
+      const result = response.data
+
+      if (result.success === false) {
+        return { success: false, message: result.message || result.error }
+      }
+
+      // Extract student data from response
+      const student = result.data?.student || result.data || result
+      
+      // Add to local store
+      students.value.push(student)
+      
+      return { success: true, data: student }
+    } catch (error) {
+      if (error.response) {
+        return { success: false, message: error.response.data?.message || error.response.data?.error }
+      } else if (error.request) {
+        return { success: false, message: 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.' }
+      } else {
+        return { success: false, message: 'Đã có lỗi xảy ra. Vui lòng thử lại.' }
+      }
     }
-    students.value.push(newStudent)
-    return newStudent
   }
 
-  const updateStudent = (id, updates) => {
-    const index = students.value.findIndex(s => s.id === id)
-    if (index !== -1) {
-      students.value[index] = { ...students.value[index], ...updates }
-      return students.value[index]
+  const updateStudent = async (id, updates) => {
+    try {
+      const endpoint = `${API_ENDPOINTS.STUDENTS.UPDATE}/${id}`
+      const response = await axiosInstance.put(endpoint, {
+        name: updates.name,
+        dob: updates.dob,
+        gender: updates.gender,
+        current_grade: updates.current_grade
+      })
+
+      const result = response.data
+
+      if (result.success === false) {
+        return { success: false, message: result.message || result.error }
+      }
+
+      // Update local store
+      const updatedStudent = result.data?.student || result.data || result
+      const index = students.value.findIndex(s => s.id === id)
+      if (index !== -1) {
+        students.value[index] = updatedStudent
+      }
+
+      return { success: true, data: updatedStudent }
+    } catch (error) {
+      if (error.response) {
+        return { success: false, message: error.response.data?.message || error.response.data?.error }
+      } else if (error.request) {
+        return { success: false, message: 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.' }
+      } else {
+        return { success: false, message: 'Đã có lỗi xảy ra. Vui lòng thử lại.' }
+      }
     }
-    return null
   }
 
-  const deleteStudent = (id) => {
-    const index = students.value.findIndex(s => s.id === id)
-    if (index !== -1) {
-      students.value.splice(index, 1)
+  const deleteStudent = async (id) => {
+    try {
+      const endpoint = `${API_ENDPOINTS.STUDENTS.DELETE}/${id}`
+      const response = await axiosInstance.delete(endpoint)
+
+      const result = response.data
+
+      if (result.success === false) {
+        return { success: false, message: result.message || result.error }
+      }
+
+      // Remove from local store
+      const index = students.value.findIndex(s => s.id === id)
+      if (index !== -1) {
+        students.value.splice(index, 1)
+      }
       // Also delete related subscriptions
-      subscriptions.value = subscriptions.value.filter(sub => sub.studentId !== id)
-      return true
+      subscriptions.value = subscriptions.value.filter(sub => 
+        (sub.studentId !== id && sub.student_id !== id)
+      )
+
+      return { success: true }
+    } catch (error) {
+      if (error.response) {
+        return { success: false, message: error.response.data?.message || error.response.data?.error }
+      } else if (error.request) {
+        return { success: false, message: 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.' }
+      } else {
+        return { success: false, message: 'Đã có lỗi xảy ra. Vui lòng thử lại.' }
+      }
     }
-    return false
+  }
+
+  const getStudentClasses = async (studentId) => {
+    try {
+      const endpoint = `${API_ENDPOINTS.STUDENTS.GET_CLASSES}/${studentId}/classes`
+      const response = await axiosInstance.get(endpoint)
+      const result = response.data
+
+      if (result.success === false) {
+        return { success: false, message: result.message || result.error }
+      }
+
+      // Extract classes array from response
+      const classesList = result.data?.classes || result.data || result.classes || []
+      return { success: true, data: classesList }
+    } catch (error) {
+      if (error.response) {
+        return { success: false, message: error.response.data?.message || error.response.data?.error }
+      } else if (error.request) {
+        return { success: false, message: 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.' }
+      } else {
+        return { success: false, message: 'Đã có lỗi xảy ra. Vui lòng thử lại.' }
+      }
+    }
   }
 
   const getStudentById = (id) => {
     return students.value.find(s => s.id === id)
+  }
+
+  const fetchStudentById = async (id) => {
+    try {
+      const endpoint = `${API_ENDPOINTS.STUDENTS.GET_BY_ID}/${id}`
+      const response = await axiosInstance.get(endpoint)
+      const result = response.data
+
+      if (result.success === false) {
+        return { success: false, message: result.message || result.error }
+      }
+
+      // Extract student data from response
+      const student = result.data?.student || result.data || result
+      
+      return { success: true, data: student }
+    } catch (error) {
+      if (error.response) {
+        return { success: false, message: error.response.data?.message || error.response.data?.error }
+      } else if (error.request) {
+        return { success: false, message: 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.' }
+      } else {
+        return { success: false, message: 'Đã có lỗi xảy ra. Vui lòng thử lại.' }
+      }
+    }
+  }
+
+  const loadStudents = async () => {
+    try {
+      // Chỉ parent mới có API để load students
+      if (!isParent.value) {
+        // Manager chưa có API để load tất cả students
+        students.value = []
+        return { success: true }
+      }
+      
+      const response = await axiosInstance.get(API_ENDPOINTS.STUDENTS.MY_CHILDREN)
+      const result = response.data
+
+      if (result.success === false) {
+        console.error('Failed to load students:', result.message || result.error)
+        return { success: false, message: result.message || result.error }
+      }
+
+      // Extract students array from response
+      // Response structure: { success: true, count: 2, data: [...] }
+      // data is directly an array, not data.students
+      const studentsList = result.data || []
+      students.value = Array.isArray(studentsList) ? studentsList : []
+
+      return { success: true }
+    } catch (error) {
+      if (error.response) {
+        console.error('Failed to load students:', error.response.data?.message || error.response.data?.error)
+        return { success: false, message: error.response.data?.message || error.response.data?.error }
+      } else if (error.request) {
+        console.error('Failed to load students: No response from server')
+        return { success: false, message: 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.' }
+      } else {
+        console.error('Failed to load students:', error.message)
+        return { success: false, message: 'Đã có lỗi xảy ra. Vui lòng thử lại.' }
+      }
+    }
   }
 
   // Parents Actions
@@ -64,51 +226,224 @@ export const useAppStore = defineStore('app', () => {
     return newParent
   }
 
-  const updateParent = (id, updates) => {
-    const index = parents.value.findIndex(p => p.id === id)
-    if (index !== -1) {
-      parents.value[index] = { ...parents.value[index], ...updates }
-      return parents.value[index]
+  const updateParent = async (id, updates) => {
+    try {
+      const endpoint = `${API_ENDPOINTS.PARENTS.UPDATE}/${id}`
+      const response = await axiosInstance.put(endpoint, {
+        name: updates.name,
+        phone: updates.phone,
+        email: updates.email
+      })
+
+      const result = response.data
+
+      if (result.success === false) {
+        return { success: false, message: result.message || result.error }
+      }
+
+      // Update local store
+      const updatedParent = result.data?.parent || result.data || result
+      const index = parents.value.findIndex(p => p.id === id)
+      if (index !== -1) {
+        parents.value[index] = updatedParent
+      }
+
+      return { success: true, data: updatedParent }
+    } catch (error) {
+      if (error.response) {
+        return { success: false, message: error.response.data?.message || error.response.data?.error }
+      } else if (error.request) {
+        return { success: false, message: 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.' }
+      } else {
+        return { success: false, message: 'Đã có lỗi xảy ra. Vui lòng thử lại.' }
+      }
     }
-    return null
   }
 
-  const deleteParent = (id) => {
-    const index = parents.value.findIndex(p => p.id === id)
-    if (index !== -1) {
-      parents.value.splice(index, 1)
-      return true
+  const deleteParent = async (id) => {
+    try {
+      const endpoint = `${API_ENDPOINTS.PARENTS.DELETE}/${id}`
+      const response = await axiosInstance.delete(endpoint)
+
+      const result = response.data
+
+      if (result.success === false) {
+        return { success: false, message: result.message || result.error }
+      }
+
+      // Remove from local store
+      const index = parents.value.findIndex(p => p.id === id)
+      if (index !== -1) {
+        parents.value.splice(index, 1)
+      }
+
+      return { success: true }
+    } catch (error) {
+      if (error.response) {
+        return { success: false, message: error.response.data?.message || error.response.data?.error }
+      } else if (error.request) {
+        return { success: false, message: 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.' }
+      } else {
+        return { success: false, message: 'Đã có lỗi xảy ra. Vui lòng thử lại.' }
+      }
     }
-    return false
   }
 
   // Classes Actions
-  const addClass = (classData) => {
-    const newClass = {
-      id: Date.now().toString(),
-      ...classData,
-      createdAt: new Date().toISOString()
+  const addClass = async (classData) => {
+    try {
+      const response = await axiosInstance.post(API_ENDPOINTS.CLASSES.CREATE, {
+        name: classData.name,
+        subject: classData.subject,
+        day_of_week: classData.day_of_week,
+        time_slot: classData.time_slot,
+        teacher_name: classData.teacher_name,
+        max_students: classData.max_students
+      })
+
+      const result = response.data
+
+      if (result.success === false) {
+        return { success: false, message: result.message || result.error }
+      }
+
+      // Extract class data from response
+      const newClass = result.data?.class || result.data || result
+      
+      // Add to local store
+      classes.value.push(newClass)
+      
+      return { success: true, data: newClass }
+    } catch (error) {
+      if (error.response) {
+        return { success: false, message: error.response.data?.message || error.response.data?.error }
+      } else if (error.request) {
+        return { success: false, message: 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.' }
+      } else {
+        return { success: false, message: 'Đã có lỗi xảy ra. Vui lòng thử lại.' }
+      }
     }
-    classes.value.push(newClass)
-    return newClass
   }
 
-  const updateClass = (id, updates) => {
-    const index = classes.value.findIndex(c => c.id === id)
-    if (index !== -1) {
-      classes.value[index] = { ...classes.value[index], ...updates }
-      return classes.value[index]
+  const loadClasses = async (day = null) => {
+    try {
+      const params = day ? { day } : {}
+      const response = await axiosInstance.get(API_ENDPOINTS.CLASSES.LIST, { params })
+      const result = response.data
+
+      if (result.success === false) {
+        console.error('Failed to load classes:', result.message || result.error)
+        return { success: false, message: result.message || result.error }
+      }
+
+      // Extract classes array from response
+      const classesList = result.data?.classes || result.data || result.classes || []
+      classes.value = Array.isArray(classesList) ? classesList : []
+
+      return { success: true }
+    } catch (error) {
+      if (error.response) {
+        console.error('Failed to load classes:', error.response.data?.message || error.response.data?.error)
+        return { success: false, message: error.response.data?.message || error.response.data?.error }
+      } else if (error.request) {
+        console.error('Failed to load classes: No response from server')
+        return { success: false, message: 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.' }
+      } else {
+        console.error('Failed to load classes:', error.message)
+        return { success: false, message: 'Đã có lỗi xảy ra. Vui lòng thử lại.' }
+      }
     }
-    return null
   }
 
-  const deleteClass = (id) => {
-    const index = classes.value.findIndex(c => c.id === id)
-    if (index !== -1) {
-      classes.value.splice(index, 1)
-      return true
+  const registerStudentToClass = async (classId, studentId) => {
+    try {
+      const endpoint = `${API_ENDPOINTS.CLASSES.REGISTER}/${classId}/register`
+      const response = await axiosInstance.post(endpoint, {
+        student_id: studentId
+      })
+
+      const result = response.data
+
+      if (result.success === false) {
+        return { success: false, message: result.message || result.error }
+      }
+
+      return { success: true, data: result.data }
+    } catch (error) {
+      if (error.response) {
+        return { success: false, message: error.response.data?.message || error.response.data?.error }
+      } else if (error.request) {
+        return { success: false, message: 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.' }
+      } else {
+        return { success: false, message: 'Đã có lỗi xảy ra. Vui lòng thử lại.' }
+      }
     }
-    return false
+  }
+
+  const updateClass = async (id, updates) => {
+    try {
+      const endpoint = `${API_ENDPOINTS.CLASSES.UPDATE}/${id}`
+      const response = await axiosInstance.put(endpoint, {
+        name: updates.name,
+        subject: updates.subject,
+        day_of_week: updates.day_of_week,
+        time_slot: updates.time_slot,
+        teacher_name: updates.teacher_name,
+        max_students: updates.max_students
+      })
+
+      const result = response.data
+
+      if (result.success === false) {
+        return { success: false, message: result.message || result.error }
+      }
+
+      // Update local store
+      const updatedClass = result.data?.class || result.data || result
+      const index = classes.value.findIndex(c => c.id === id)
+      if (index !== -1) {
+        classes.value[index] = updatedClass
+      }
+
+      return { success: true, data: updatedClass }
+    } catch (error) {
+      if (error.response) {
+        return { success: false, message: error.response.data?.message || error.response.data?.error }
+      } else if (error.request) {
+        return { success: false, message: 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.' }
+      } else {
+        return { success: false, message: 'Đã có lỗi xảy ra. Vui lòng thử lại.' }
+      }
+    }
+  }
+
+  const deleteClass = async (id) => {
+    try {
+      const endpoint = `${API_ENDPOINTS.CLASSES.DELETE}/${id}`
+      const response = await axiosInstance.delete(endpoint)
+
+      const result = response.data
+
+      if (result.success === false) {
+        return { success: false, message: result.message || result.error }
+      }
+
+      // Remove from local store
+      const index = classes.value.findIndex(c => c.id === id)
+      if (index !== -1) {
+        classes.value.splice(index, 1)
+      }
+
+      return { success: true }
+    } catch (error) {
+      if (error.response) {
+        return { success: false, message: error.response.data?.message || error.response.data?.error }
+      } else if (error.request) {
+        return { success: false, message: 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.' }
+      } else {
+        return { success: false, message: 'Đã có lỗi xảy ra. Vui lòng thử lại.' }
+      }
+    }
   }
 
   const getClassById = (id) => {
@@ -116,48 +451,195 @@ export const useAppStore = defineStore('app', () => {
   }
 
   // Subscriptions Actions
-  const addSubscription = (subscription) => {
-    const newSubscription = {
-      id: Date.now().toString(),
-      totalSessions: subscription.totalSessions || 0,
-      usedSessions: 0,
-      remainingSessions: subscription.totalSessions || 0,
-      ...subscription,
-      createdAt: new Date().toISOString()
+  const loadSubscriptions = async (studentId = null) => {
+    try {
+      const params = {}
+      if (studentId) {
+        params.student_id = studentId
+      }
+      
+      const response = await axiosInstance.get(API_ENDPOINTS.SUBSCRIPTIONS.LIST, { params })
+      const result = response.data
+
+      if (result.success === false) {
+        console.error('Failed to load subscriptions:', result.message || result.error)
+        return { success: false, message: result.message || result.error }
+      }
+
+      // Extract subscriptions array from response
+      // Response structure: { success: true, count: 3, data: [...] }
+      const subscriptionsList = result.data || []
+      subscriptions.value = Array.isArray(subscriptionsList) ? subscriptionsList : []
+
+      return { success: true, count: result.count || subscriptionsList.length }
+    } catch (error) {
+      if (error.response) {
+        console.error('Failed to load subscriptions:', error.response.data?.message || error.response.data?.error)
+        return { success: false, message: error.response.data?.message || error.response.data?.error }
+      } else if (error.request) {
+        console.error('Failed to load subscriptions: No response from server')
+        return { success: false, message: 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.' }
+      } else {
+        console.error('Failed to load subscriptions:', error.message)
+        return { success: false, message: 'Đã có lỗi xảy ra. Vui lòng thử lại.' }
+      }
     }
-    subscriptions.value.push(newSubscription)
-    return newSubscription
   }
 
-  const updateSubscription = (id, updates) => {
-    const index = subscriptions.value.findIndex(s => s.id === id)
-    if (index !== -1) {
-      const updated = { ...subscriptions.value[index], ...updates }
-      // Recalculate remaining sessions
-      updated.remainingSessions = updated.totalSessions - updated.usedSessions
-      subscriptions.value[index] = updated
-      return updated
+  const addSubscription = async (subscriptionData) => {
+    try {
+      const response = await axiosInstance.post(API_ENDPOINTS.SUBSCRIPTIONS.CREATE, {
+        student_id: subscriptionData.student_id,
+        package_name: subscriptionData.package_name,
+        total_sessions: subscriptionData.total_sessions,
+        start_date: subscriptionData.start_date,
+        end_date: subscriptionData.end_date || null
+      })
+
+      const result = response.data
+
+      if (result.success === false) {
+        return { success: false, message: result.message || result.error }
+      }
+
+      // Extract subscription data from response
+      const subscription = result.data?.subscription || result.data || result
+      
+      // Add to local store
+      subscriptions.value.push(subscription)
+      
+      return { success: true, data: subscription }
+    } catch (error) {
+      if (error.response) {
+        return { success: false, message: error.response.data?.message || error.response.data?.error }
+      } else if (error.request) {
+        return { success: false, message: 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.' }
+      } else {
+        return { success: false, message: 'Đã có lỗi xảy ra. Vui lòng thử lại.' }
+      }
     }
-    return null
   }
 
-  const useSession = (subscriptionId) => {
-    const subscription = subscriptions.value.find(s => s.id === subscriptionId)
-    if (subscription && subscription.remainingSessions > 0) {
-      subscription.usedSessions += 1
-      subscription.remainingSessions -= 1
-      return true
+  const fetchSubscriptionById = async (id) => {
+    try {
+      const endpoint = `${API_ENDPOINTS.SUBSCRIPTIONS.GET_BY_ID}/${id}`
+      const response = await axiosInstance.get(endpoint)
+      const result = response.data
+
+      if (result.success === false) {
+        return { success: false, message: result.message || result.error }
+      }
+
+      // Extract subscription data from response
+      const subscription = result.data?.subscription || result.data || result
+      
+      return { success: true, data: subscription }
+    } catch (error) {
+      if (error.response) {
+        return { success: false, message: error.response.data?.message || error.response.data?.error }
+      } else if (error.request) {
+        return { success: false, message: 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.' }
+      } else {
+        return { success: false, message: 'Đã có lỗi xảy ra. Vui lòng thử lại.' }
+      }
     }
-    return false
   }
 
-  const deleteSubscription = (id) => {
-    const index = subscriptions.value.findIndex(s => s.id === id)
-    if (index !== -1) {
-      subscriptions.value.splice(index, 1)
-      return true
+  const useSession = async (subscriptionId) => {
+    try {
+      const endpoint = `${API_ENDPOINTS.SUBSCRIPTIONS.USE_SESSION}/${subscriptionId}/use`
+      const response = await axiosInstance.patch(endpoint)
+
+      const result = response.data
+
+      if (result.success === false) {
+        return { success: false, message: result.message || result.error }
+      }
+
+      // Update local store
+      const subscription = subscriptions.value.find(s => s.id === subscriptionId)
+      if (subscription) {
+        const updatedSubscription = result.data?.subscription || result.data || result
+        const index = subscriptions.value.findIndex(s => s.id === subscriptionId)
+        if (index !== -1) {
+          subscriptions.value[index] = updatedSubscription
+        }
+      }
+
+      return { success: true, data: result.data }
+    } catch (error) {
+      if (error.response) {
+        return { success: false, message: error.response.data?.message || error.response.data?.error }
+      } else if (error.request) {
+        return { success: false, message: 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.' }
+      } else {
+        return { success: false, message: 'Đã có lỗi xảy ra. Vui lòng thử lại.' }
+      }
     }
-    return false
+  }
+
+  const updateSubscription = async (id, updates) => {
+    try {
+      const endpoint = `${API_ENDPOINTS.SUBSCRIPTIONS.UPDATE}/${id}`
+      const response = await axiosInstance.put(endpoint, {
+        package_name: updates.package_name,
+        total_sessions: updates.total_sessions,
+        start_date: updates.start_date,
+        end_date: updates.end_date || null
+      })
+
+      const result = response.data
+
+      if (result.success === false) {
+        return { success: false, message: result.message || result.error }
+      }
+
+      // Update local store
+      const updatedSubscription = result.data?.subscription || result.data || result
+      const index = subscriptions.value.findIndex(s => s.id === id)
+      if (index !== -1) {
+        subscriptions.value[index] = updatedSubscription
+      }
+
+      return { success: true, data: updatedSubscription }
+    } catch (error) {
+      if (error.response) {
+        return { success: false, message: error.response.data?.message || error.response.data?.error }
+      } else if (error.request) {
+        return { success: false, message: 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.' }
+      } else {
+        return { success: false, message: 'Đã có lỗi xảy ra. Vui lòng thử lại.' }
+      }
+    }
+  }
+
+  const deleteSubscription = async (id) => {
+    try {
+      const endpoint = `${API_ENDPOINTS.SUBSCRIPTIONS.DELETE}/${id}`
+      const response = await axiosInstance.delete(endpoint)
+
+      const result = response.data
+
+      if (result.success === false) {
+        return { success: false, message: result.message || result.error }
+      }
+
+      // Remove from local store
+      const index = subscriptions.value.findIndex(s => s.id === id)
+      if (index !== -1) {
+        subscriptions.value.splice(index, 1)
+      }
+
+      return { success: true }
+    } catch (error) {
+      if (error.response) {
+        return { success: false, message: error.response.data?.message || error.response.data?.error }
+      } else if (error.request) {
+        return { success: false, message: 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.' }
+      } else {
+        return { success: false, message: 'Đã có lỗi xảy ra. Vui lòng thử lại.' }
+      }
+    }
   }
 
   const getSubscriptionById = (id) => {
@@ -165,44 +647,23 @@ export const useAppStore = defineStore('app', () => {
   }
 
   const getSubscriptionsByStudent = (studentId) => {
-    return subscriptions.value.filter(s => s.studentId === studentId)
+    return subscriptions.value.filter(s => s.studentId === studentId || s.student_id === studentId)
   }
 
   // Authentication Actions
   const loginManager = async (credentials) => {
     try {
-      const url = `${API_BASE_URL}${API_ENDPOINTS.AUTH.LOGIN}`
-      
       // Call API to login manager
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          email: credentials.email,
-          password: credentials.password
-        })
+      const response = await axiosInstance.post(API_ENDPOINTS.AUTH.LOGIN, {
+        email: credentials.email,
+        password: credentials.password
       })
 
-      // Check if response is ok before parsing JSON
-      let result
-      try {
-        result = await response.json()
-      } catch (parseError) {
-        return { success: false, message: 'Định dạng phản hồi không hợp lệ' }
-      }
-
-      // Check if response is successful
-      if (!response.ok) {
-        const errorMessage = result.message || 'Đăng nhập thất bại'
-        return { success: false, message: errorMessage }
-      }
+      const result = response.data
 
       // Check success field (some APIs might not have this field)
       if (result.success === false) {
-        const errorMessage = result.message || 'Email hoặc mật khẩu không đúng'
-        return { success: false, message: errorMessage }
+        return { success: false, message: result.message || result.error }
       }
 
       // If response is ok but no success field, assume it's successful if we have data
@@ -234,49 +695,36 @@ export const useAppStore = defineStore('app', () => {
 
       return { success: false, message: 'Không có dữ liệu người dùng trong phản hồi' }
     } catch (error) {
-      // Check if it's a network error
-      if (error.message.includes('fetch') || error.message.includes('Network')) {
+      // Handle axios errors
+      if (error.response) {
+        // Server responded with error status
+        const errorMessage = error.response.data?.message || error.response.data?.error || 'Đăng nhập thất bại'
+        return { success: false, message: errorMessage }
+      } else if (error.request) {
+        // Request was made but no response received
         return { success: false, message: 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.' }
+      } else {
+        // Something else happened
+        return { success: false, message: 'Đã có lỗi xảy ra. Vui lòng thử lại.' }
       }
-      
-      return { success: false, message: 'Đã có lỗi xảy ra. Vui lòng thử lại.' }
     }
   }
 
   const registerParent = async (parentData) => {
     try {
       // Call API to register parent
-      const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.AUTH.PARENT_REGISTER}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          name: parentData.name,
-          email: parentData.email,
-          phone: parentData.phone,
-          password: parentData.password
-        })
+      const response = await axiosInstance.post(API_ENDPOINTS.AUTH.PARENT_REGISTER, {
+        name: parentData.name,
+        email: parentData.email,
+        phone: parentData.phone,
+        password: parentData.password
       })
 
-      // Check if response is ok before parsing JSON
-      let result
-      try {
-        result = await response.json()
-      } catch (parseError) {
-        return { success: false, message: 'Định dạng phản hồi không hợp lệ' }
-      }
-
-      // Check if response is successful
-      if (!response.ok) {
-        const errorMessage = result.message || 'Đăng ký thất bại'
-        return { success: false, message: errorMessage }
-      }
+      const result = response.data
 
       // Check success field
       if (result.success === false) {
-        const errorMessage = result.message || 'Đăng ký thất bại'
-        return { success: false, message: errorMessage }
+        return { success: false, message: result.message || result.error }
       }
 
       // If response is ok but no success field, assume it's successful if we have data
@@ -313,48 +761,68 @@ export const useAppStore = defineStore('app', () => {
 
       return { success: false, message: 'Không có dữ liệu người dùng trong phản hồi' }
     } catch (error) {
-      // Check if it's a network error
-      if (error.message.includes('fetch') || error.message.includes('Network')) {
+      // Handle axios errors
+      if (error.response) {
+        // Server responded with error status
+        const errorMessage = error.response.data?.message || error.response.data?.error || 'Đăng ký thất bại'
+        return { success: false, message: errorMessage }
+      } else if (error.request) {
+        // Request was made but no response received
         return { success: false, message: 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.' }
+      } else {
+        // Something else happened
+        return { success: false, message: 'Đã có lỗi xảy ra. Vui lòng thử lại.' }
       }
-      
-      return { success: false, message: 'Đã có lỗi xảy ra. Vui lòng thử lại.' }
     }
   }
 
   const loginParent = async (credentials) => {
     try {
-      // Call API to login parent
-      const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.PARENTS.LOGIN}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          identifier: credentials.identifier, // email or phone
-          password: credentials.password
-        })
-      })
+      // Use the correct endpoint: /api/auth/parent/login
+      const endpoint = API_ENDPOINTS.AUTH.PARENT_LOGIN
+      
+      // Detect if identifier is email or phone
+      const isEmail = credentials.identifier.includes('@')
+      
+      // Backend requires email or phone field, not identifier
+      const requestBody = isEmail 
+        ? { email: credentials.identifier, password: credentials.password }
+        : { phone: credentials.identifier, password: credentials.password }
+      
+      const response = await axiosInstance.post(endpoint, requestBody)
+      const data = response.data
 
-      if (!response.ok) {
-        return false
+      // Check if API returned success: false
+      if (data.success === false) {
+        return { success: false, message: data.message || data.error }
       }
 
-      const data = await response.json()
+      // Extract parent data from response (handle different response formats)
+      const parentData = data.data?.parent || data.data || data.parent || data
       
+      if (!parentData || !parentData.id) {
+        return { success: false, message: 'Không có dữ liệu người dùng trong phản hồi' }
+      }
+
       // Get student info if available
       const student = students.value.find(s => 
-        s.parentPhone === data.phone || 
-        s.id === data.studentId
+        s.parentPhone === parentData.phone || 
+        s.id === parentData.studentId
       )
 
+      // Save token if available
+      if (data.token || data.data?.token) {
+        setAuthToken(data.token || data.data.token)
+      }
+
+      // Set current user
       currentUser.value = {
-        id: data.id,
-        name: data.name || 'Phụ huynh',
-        phone: data.phone,
-        email: data.email,
+        id: parentData.id,
+        name: parentData.name || 'Phụ huynh',
+        phone: parentData.phone,
+        email: parentData.email,
         role: 'parent',
-        studentId: data.studentId,
+        studentId: parentData.studentId || null,
         studentName: student ? student.name : null
       }
       userRole.value = 'parent'
@@ -363,46 +831,20 @@ export const useAppStore = defineStore('app', () => {
       localStorage.setItem('currentUser', JSON.stringify(currentUser.value))
       localStorage.setItem('userRole', userRole.value)
       
-      return true
+      return { success: true }
     } catch (error) {
-      // Fallback for demo: check local parents array
-      const identifier = credentials.identifier.toLowerCase()
-      const parent = parents.value.find(p => 
-        (p.email && p.email.toLowerCase() === identifier) || 
-        p.phone === identifier
-      )
-      
-      if (!parent || !parent.password) {
-        return false
+      // Handle axios errors - chỉ trả về lỗi từ backend
+      if (error.response) {
+        // Server responded with error status - dùng message từ backend
+        const errorMessage = error.response.data?.message || error.response.data?.error || 'Đăng nhập thất bại'
+        return { success: false, message: errorMessage }
+      } else if (error.request) {
+        // Request was made but no response received
+        return { success: false, message: 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.' }
+      } else {
+        // Something else happened
+        return { success: false, message: 'Đã có lỗi xảy ra. Vui lòng thử lại.' }
       }
-
-      // Simple password check (in real app, this should be hashed)
-      if (parent.password !== credentials.password) {
-        return false
-      }
-
-      // Get student info if available
-      const student = students.value.find(s => 
-        s.parentPhone === parent.phone || 
-        s.id === parent.studentId
-      )
-
-      currentUser.value = {
-        id: parent.id,
-        name: parent.name || 'Phụ huynh',
-        phone: parent.phone,
-        email: parent.email,
-        role: 'parent',
-        studentId: parent.studentId,
-        studentName: student ? student.name : null
-      }
-      userRole.value = 'parent'
-      
-      // Save to localStorage
-      localStorage.setItem('currentUser', JSON.stringify(currentUser.value))
-      localStorage.setItem('userRole', userRole.value)
-      
-      return true
     }
   }
 
@@ -462,17 +904,24 @@ export const useAppStore = defineStore('app', () => {
     updateStudent,
     deleteStudent,
     getStudentById,
+    fetchStudentById,
+    loadStudents,
+    getStudentClasses,
     // Parents Actions
     addParent,
     updateParent,
     deleteParent,
     // Classes Actions
     addClass,
+    loadClasses,
+    registerStudentToClass,
     updateClass,
     deleteClass,
     getClassById,
     // Subscriptions Actions
+    loadSubscriptions,
     addSubscription,
+    fetchSubscriptionById,
     updateSubscription,
     useSession,
     deleteSubscription,

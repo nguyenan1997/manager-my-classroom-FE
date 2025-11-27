@@ -339,17 +339,20 @@ const handleParentLogin = async () => {
 
   try {
     // Call API to login parent
-    const success = await store.loginParent({
+    const result = await store.loginParent({
       identifier: parentLoginForm.value.identifier, // email or phone
       password: parentLoginForm.value.password
     })
 
-    if (success) {
+    // Handle both old format (boolean) and new format (object)
+    if (result === true || (result && result.success === true)) {
       router.push('/')
     } else {
-      parentError.value = 'Email/Số điện thoại hoặc mật khẩu không đúng'
+      // Show error message from API or default message
+      parentError.value = (result && result.message) || 'Email/Số điện thoại hoặc mật khẩu không đúng'
     }
   } catch (error) {
+    console.error('Login error:', error)
     parentError.value = 'Đã có lỗi xảy ra. Vui lòng thử lại.'
   } finally {
     isLoading.value = false

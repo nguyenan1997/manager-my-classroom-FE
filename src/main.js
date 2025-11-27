@@ -5,8 +5,10 @@ import App from './App.vue'
 import './style.css'
 import Dashboard from './views/Dashboard.vue'
 import Students from './views/Students.vue'
+import StudentDetail from './views/StudentDetail.vue'
 import Classes from './views/Classes.vue'
 import Subscriptions from './views/Subscriptions.vue'
+import SubscriptionDetail from './views/SubscriptionDetail.vue'
 import Auth from './views/Auth.vue'
 import { useAppStore } from './stores/useAppStore'
 
@@ -27,20 +29,32 @@ const routes = [
     path: '/students',
     name: 'Students',
     component: Students,
-    meta: { requiresAuth: true, requiresManager: true }
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/students/:id',
+    name: 'StudentDetail',
+    component: StudentDetail,
+    meta: { requiresAuth: true }
   },
   {
     path: '/classes',
     name: 'Classes',
     component: Classes,
-    meta: { requiresAuth: true, requiresManager: true }
+    meta: { requiresAuth: true }
   },
   {
     path: '/subscriptions',
     name: 'Subscriptions',
     component: Subscriptions,
-    meta: { requiresAuth: true, requiresManager: true }
-  }
+    meta: { requiresAuth: true } // Both manager and parent can access
+  },
+  {
+    path: '/subscriptions/:id',
+    name: 'SubscriptionDetail',
+    component: SubscriptionDetail,
+    meta: { requiresAuth: true }
+  },
 ]
 
 const router = createRouter({
@@ -60,8 +74,10 @@ router.beforeEach((to, from, next) => {
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
   const requiresGuest = to.matched.some(record => record.meta.requiresGuest)
   const requiresManager = to.matched.some(record => record.meta.requiresManager)
+  const requiresParent = to.matched.some(record => record.meta.requiresParent)
   const isAuthenticated = store.isAuthenticated
   const isManager = store.isManager
+  const isParent = store.isParent
 
   if (requiresAuth && !isAuthenticated) {
     // Redirect to login if not authenticated

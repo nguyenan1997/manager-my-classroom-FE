@@ -2,12 +2,17 @@
   <div class="space-y-6">
     <div class="flex justify-between items-center">
       <div>
-        <h1 class="text-3xl font-bold text-gray-900 mb-2">Quản lý Lớp học</h1>
-        <p class="text-gray-600">Tạo và lên lịch lớp học cho học sinh</p>
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">
+          {{ store.isParent ? 'Lớp học' : 'Quản lý Lớp học' }}
+        </h1>
+        <p class="text-gray-600">
+          {{ store.isParent ? 'Đăng ký lớp học cho con của bạn' : 'Tạo và quản lý lớp học' }}
+        </p>
       </div>
       <button
+        v-if="store.isManager"
         @click="openAddModal"
-        class="btn btn-primary flex items-center space-x-2"
+        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
       >
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -16,13 +21,41 @@
       </button>
     </div>
 
+    <!-- Filter by Day -->
+    <div class="bg-white rounded-xl shadow-md p-6">
+      <div class="flex flex-col md:flex-row gap-4 items-center">
+        <label class="text-sm font-medium text-gray-700 whitespace-nowrap">Lọc theo ngày:</label>
+        <select
+          v-model="selectedDay"
+          @change="handleDayFilter"
+          class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        >
+          <option value="">Tất cả các ngày</option>
+          <option value="Monday">Thứ 2</option>
+          <option value="Tuesday">Thứ 3</option>
+          <option value="Wednesday">Thứ 4</option>
+          <option value="Thursday">Thứ 5</option>
+          <option value="Friday">Thứ 6</option>
+          <option value="Saturday">Thứ 7</option>
+          <option value="Sunday">Chủ nhật</option>
+        </select>
+        <button
+          v-if="selectedDay"
+          @click="clearDayFilter"
+          class="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+        >
+          Xóa bộ lọc
+        </button>
+      </div>
+    </div>
+
     <!-- Search -->
-    <div class="card">
+    <div class="bg-white rounded-xl shadow-md p-6">
       <input
         v-model="searchQuery"
         type="text"
-        placeholder="Tìm kiếm theo tên lớp..."
-        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+        placeholder="Tìm kiếm theo tên lớp, môn học, giáo viên..."
+        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
       />
     </div>
 
@@ -31,17 +64,20 @@
       <div
         v-for="classItem in filteredClasses"
         :key="classItem.id"
-        class="card hover:shadow-lg transition-shadow duration-300"
+        class="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow duration-300"
       >
         <div class="flex justify-between items-start mb-4">
-          <h3 class="text-xl font-semibold text-gray-900">{{ classItem.name }}</h3>
-          <div class="flex space-x-2">
+          <div class="flex-1">
+            <h3 class="text-xl font-semibold text-gray-900 mb-1">{{ classItem.name }}</h3>
+            <p class="text-sm text-blue-600 font-medium">{{ classItem.subject }}</p>
+          </div>
+          <div v-if="store.isManager" class="flex space-x-2">
             <button
               @click="openEditModal(classItem)"
               class="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors"
               title="Chỉnh sửa"
             >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
               </svg>
             </button>
@@ -50,52 +86,56 @@
               class="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
               title="Xóa"
             >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
               </svg>
             </button>
           </div>
         </div>
 
-        <div class="space-y-2 text-sm text-gray-600">
+        <div class="space-y-3 text-sm text-gray-600">
           <div class="flex items-center space-x-2">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
-            <span>{{ formatDate(classItem.startDate) }}</span>
-            <span v-if="classItem.endDate">- {{ formatDate(classItem.endDate) }}</span>
+            <span class="font-medium">{{ getDayLabel(classItem.day_of_week) }}</span>
           </div>
 
           <div class="flex items-center space-x-2">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <span>{{ classItem.time }} ({{ classItem.duration }} phút)</span>
+            <span>{{ classItem.time_slot }}</span>
           </div>
 
           <div class="flex items-center space-x-2">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+            <span>{{ classItem.teacher_name }}</span>
+          </div>
+
+          <div class="flex items-center space-x-2">
+            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
             </svg>
-            <span>{{ getStudentCount(classItem) }} học sinh</span>
+            <span>{{ getStudentCount(classItem) }} / {{ classItem.max_students }} học sinh</span>
           </div>
+        </div>
 
-          <div v-if="classItem.schedule && classItem.schedule.length > 0" class="mt-3 pt-3 border-t">
-            <p class="text-xs font-medium text-gray-700 mb-1">Lịch học:</p>
-            <div class="flex flex-wrap gap-1">
-              <span
-                v-for="day in classItem.schedule"
-                :key="day"
-                class="px-2 py-1 bg-primary-100 text-primary-700 rounded text-xs"
-              >
-                {{ getDayLabel(day) }}
-              </span>
-            </div>
-          </div>
-
-          <div v-if="classItem.notes" class="mt-3 pt-3 border-t">
-            <p class="text-xs text-gray-500">{{ classItem.notes }}</p>
-          </div>
+        <!-- Action Buttons -->
+        <div v-if="store.isParent" class="mt-4 pt-4 border-t">
+          <button
+            v-for="student in availableStudents"
+            :key="student.id"
+            @click="registerStudent(classItem.id, student.id)"
+            :disabled="isRegistering || isStudentRegistered(classItem, student.id)"
+            class="w-full mb-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed text-sm"
+          >
+            {{ isStudentRegistered(classItem, student.id) 
+              ? `✓ ${student.name} đã đăng ký` 
+              : `Đăng ký cho ${student.name}` }}
+          </button>
         </div>
       </div>
 
@@ -115,50 +155,100 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useAppStore } from '../stores/useAppStore'
 import ClassModal from '../components/ClassModal.vue'
 
 const store = useAppStore()
 const searchQuery = ref('')
+const selectedDay = ref('')
 const showModal = ref(false)
 const selectedClass = ref(null)
+const isRegistering = ref(false)
 
-const filteredClasses = computed(() => {
-  if (!searchQuery.value) {
-    return store.classes
+// Load classes from API on mount
+onMounted(async () => {
+  try {
+    await store.loadClasses()
+  } catch (error) {
+    console.error('Error loading classes:', error)
   }
-  
-  const query = searchQuery.value.toLowerCase()
-  return store.classes.filter(classItem => 
-    classItem.name.toLowerCase().includes(query)
+})
+
+// Get available students for parent
+const availableStudents = computed(() => {
+  if (!store.isParent) return []
+  return store.students.filter(student => 
+    student.parent_id === store.currentUser?.id || 
+    student.parentId === store.currentUser?.id
   )
 })
 
-const getStudentCount = (classItem) => {
-  return classItem.studentIds ? classItem.studentIds.length : 0
-}
+const filteredClasses = computed(() => {
+  let classesList = store.classes || []
+  
+  // Filter by day if selected
+  if (selectedDay.value) {
+    classesList = classesList.filter(classItem => 
+      classItem.day_of_week === selectedDay.value
+    )
+  }
+  
+  // Filter by search query
+  if (searchQuery.value) {
+    const query = searchQuery.value.toLowerCase()
+    classesList = classesList.filter(classItem => 
+      classItem.name?.toLowerCase().includes(query) ||
+      classItem.subject?.toLowerCase().includes(query) ||
+      classItem.teacher_name?.toLowerCase().includes(query)
+    )
+  }
+  
+  return classesList
+})
 
 const getDayLabel = (day) => {
   const labels = {
-    monday: 'T2',
-    tuesday: 'T3',
-    wednesday: 'T4',
-    thursday: 'T5',
-    friday: 'T6',
-    saturday: 'T7',
-    sunday: 'CN'
+    'Monday': 'Thứ 2',
+    'Tuesday': 'Thứ 3',
+    'Wednesday': 'Thứ 4',
+    'Thursday': 'Thứ 5',
+    'Friday': 'Thứ 6',
+    'Saturday': 'Thứ 7',
+    'Sunday': 'Chủ nhật'
   }
   return labels[day] || day
 }
 
-const openAddModal = () => {
-  selectedClass.value = null
-  showModal.value = true
+const getStudentCount = (classItem) => {
+  // API có thể trả về số lượng học sinh đã đăng ký
+  return classItem.registered_students?.length || classItem.student_count || 0
 }
 
-const openEditModal = (classItem) => {
-  selectedClass.value = classItem
+const isStudentRegistered = (classItem, studentId) => {
+  // Kiểm tra xem học sinh đã đăng ký chưa
+  return classItem.registered_students?.some(s => s.id === studentId || s === studentId) || false
+}
+
+const handleDayFilter = async () => {
+  try {
+    await store.loadClasses(selectedDay.value || null)
+  } catch (error) {
+    console.error('Error filtering classes:', error)
+  }
+}
+
+const clearDayFilter = async () => {
+  selectedDay.value = ''
+  try {
+    await store.loadClasses()
+  } catch (error) {
+    console.error('Error loading classes:', error)
+  }
+}
+
+const openAddModal = () => {
+  selectedClass.value = null
   showModal.value = true
 }
 
@@ -167,24 +257,66 @@ const closeModal = () => {
   selectedClass.value = null
 }
 
-const handleSubmit = (formData) => {
+const openEditModal = (classItem) => {
+  selectedClass.value = classItem
+  showModal.value = true
+}
+
+const handleSubmit = async (formData) => {
   if (selectedClass.value) {
-    store.updateClass(selectedClass.value.id, formData)
+    // Update class
+    const result = await store.updateClass(selectedClass.value.id, formData)
+    if (!result.success) {
+      alert(result.message || 'Cập nhật lớp học thất bại')
+    } else {
+      closeModal()
+      // Reload classes
+      await store.loadClasses(selectedDay.value || null)
+    }
   } else {
-    store.addClass(formData)
+    // Create new class
+    const result = await store.addClass(formData)
+    if (!result.success) {
+      alert(result.message || 'Tạo lớp học thất bại')
+    } else {
+      closeModal()
+      // Reload classes
+      await store.loadClasses(selectedDay.value || null)
+    }
   }
 }
 
-const confirmDelete = (classItem) => {
-  if (confirm(`Bạn có chắc chắn muốn xóa lớp học "${classItem.name}"?`)) {
-    store.deleteClass(classItem.id)
+const confirmDelete = async (classItem) => {
+  if (!confirm(`Bạn có chắc chắn muốn xóa lớp học "${classItem.name}"?`)) {
+    return
+  }
+  
+  const result = await store.deleteClass(classItem.id)
+  if (!result.success) {
+    alert(result.message || 'Xóa lớp học thất bại')
+  } else {
+    // Reload classes
+    await store.loadClasses(selectedDay.value || null)
   }
 }
 
-const formatDate = (dateString) => {
-  if (!dateString) return '-'
-  const date = new Date(dateString)
-  return date.toLocaleDateString('vi-VN')
+const registerStudent = async (classId, studentId) => {
+  if (isRegistering.value) return
+  
+  isRegistering.value = true
+  try {
+    const result = await store.registerStudentToClass(classId, studentId)
+    if (!result.success) {
+      alert(result.message || 'Đăng ký lớp học thất bại')
+    } else {
+      // Reload classes to update registered students
+      await store.loadClasses(selectedDay.value || null)
+    }
+  } catch (error) {
+    console.error('Error registering student:', error)
+    alert('Đã có lỗi xảy ra khi đăng ký')
+  } finally {
+    isRegistering.value = false
+  }
 }
 </script>
-
