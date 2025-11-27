@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { API_BASE_URL } from '../config/constants'
-import { API_ENDPOINTS, setAuthToken, removeAuthToken } from '../config/api'
+import { API_ENDPOINTS, setAuthToken, removeAuthToken, axiosInstance } from '../config/api'
 
 export const useAppStore = defineStore('app', () => {
   // Authentication
@@ -171,33 +170,13 @@ export const useAppStore = defineStore('app', () => {
   // Authentication Actions
   const loginManager = async (credentials) => {
     try {
-      const url = `${API_BASE_URL}${API_ENDPOINTS.AUTH.LOGIN}`
-      
       // Call API to login manager
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          email: credentials.email,
-          password: credentials.password
-        })
+      const response = await axiosInstance.post(API_ENDPOINTS.AUTH.LOGIN, {
+        email: credentials.email,
+        password: credentials.password
       })
 
-      // Check if response is ok before parsing JSON
-      let result
-      try {
-        result = await response.json()
-      } catch (parseError) {
-        return { success: false, message: 'Định dạng phản hồi không hợp lệ' }
-      }
-
-      // Check if response is successful
-      if (!response.ok) {
-        const errorMessage = result.message || 'Đăng nhập thất bại'
-        return { success: false, message: errorMessage }
-      }
+      const result = response.data
 
       // Check success field (some APIs might not have this field)
       if (result.success === false) {
@@ -234,44 +213,32 @@ export const useAppStore = defineStore('app', () => {
 
       return { success: false, message: 'Không có dữ liệu người dùng trong phản hồi' }
     } catch (error) {
-      // Check if it's a network error
-      if (error.message.includes('fetch') || error.message.includes('Network')) {
+      // Handle axios errors
+      if (error.response) {
+        // Server responded with error status
+        const errorMessage = error.response.data?.message || error.response.data?.error || 'Đăng nhập thất bại'
+        return { success: false, message: errorMessage }
+      } else if (error.request) {
+        // Request was made but no response received
         return { success: false, message: 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.' }
+      } else {
+        // Something else happened
+        return { success: false, message: 'Đã có lỗi xảy ra. Vui lòng thử lại.' }
       }
-      
-      return { success: false, message: 'Đã có lỗi xảy ra. Vui lòng thử lại.' }
     }
   }
 
   const registerParent = async (parentData) => {
     try {
       // Call API to register parent
-      const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.AUTH.PARENT_REGISTER}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          name: parentData.name,
-          email: parentData.email,
-          phone: parentData.phone,
-          password: parentData.password
-        })
+      const response = await axiosInstance.post(API_ENDPOINTS.AUTH.PARENT_REGISTER, {
+        name: parentData.name,
+        email: parentData.email,
+        phone: parentData.phone,
+        password: parentData.password
       })
 
-      // Check if response is ok before parsing JSON
-      let result
-      try {
-        result = await response.json()
-      } catch (parseError) {
-        return { success: false, message: 'Định dạng phản hồi không hợp lệ' }
-      }
-
-      // Check if response is successful
-      if (!response.ok) {
-        const errorMessage = result.message || 'Đăng ký thất bại'
-        return { success: false, message: errorMessage }
-      }
+      const result = response.data
 
       // Check success field
       if (result.success === false) {
@@ -313,48 +280,87 @@ export const useAppStore = defineStore('app', () => {
 
       return { success: false, message: 'Không có dữ liệu người dùng trong phản hồi' }
     } catch (error) {
-      // Check if it's a network error
-      if (error.message.includes('fetch') || error.message.includes('Network')) {
+      // Handle axios errors
+      if (error.response) {
+        // Server responded with error status
+        const errorMessage = error.response.data?.message || error.response.data?.error || 'Đăng ký thất bại'
+        return { success: false, message: errorMessage }
+      } else if (error.request) {
+        // Request was made but no response received
         return { success: false, message: 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.' }
+      } else {
+        // Something else happened
+        return { success: false, message: 'Đã có lỗi xảy ra. Vui lòng thử lại.' }
       }
-      
-      return { success: false, message: 'Đã có lỗi xảy ra. Vui lòng thử lại.' }
     }
   }
 
   const loginParent = async (credentials) => {
     try {
-      // Call API to login parent
-      const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.PARENTS.LOGIN}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
+      // Try both endpoints - some APIs might use different paths
+      let response
+      let data
+      
+      // Try first endpoint: /api/parents/login
+      try {
+        response = await axiosInstance.post(API_ENDPOINTS.PARENTS.LOGIN, {
           identifier: credentials.identifier, // email or phone
           password: credentials.password
         })
-      })
-
-      if (!response.ok) {
-        return false
+        data = response.data
+      } catch (firstError) {
+        // If first endpoint fails, try alternative endpoint
+        try {
+          response = await axiosInstance.post(API_ENDPOINTS.AUTH.PARENT_LOGIN, {
+            identifier: credentials.identifier,
+            password: credentials.password
+          })
+          data = response.data
+        } catch (secondError) {
+          // Both endpoints failed
+          if (secondError.response) {
+            const errorMessage = secondError.response.data?.message || secondError.response.data?.error || 'Email/Số điện thoại hoặc mật khẩu không đúng'
+            return { success: false, message: errorMessage }
+          } else if (secondError.request) {
+            return { success: false, message: 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.' }
+          } else {
+            return { success: false, message: 'Đã có lỗi xảy ra. Vui lòng thử lại.' }
+          }
+        }
       }
 
-      const data = await response.json()
+      // Check if API returned success: false
+      if (data.success === false) {
+        const errorMessage = data.message || data.error || 'Email/Số điện thoại hoặc mật khẩu không đúng'
+        return { success: false, message: errorMessage }
+      }
+
+      // Extract parent data from response (handle different response formats)
+      const parentData = data.data?.parent || data.data || data.parent || data
       
+      if (!parentData || !parentData.id) {
+        return { success: false, message: 'Không có dữ liệu người dùng trong phản hồi' }
+      }
+
       // Get student info if available
       const student = students.value.find(s => 
-        s.parentPhone === data.phone || 
-        s.id === data.studentId
+        s.parentPhone === parentData.phone || 
+        s.id === parentData.studentId
       )
 
+      // Save token if available
+      if (data.token || data.data?.token) {
+        setAuthToken(data.token || data.data.token)
+      }
+
+      // Set current user
       currentUser.value = {
-        id: data.id,
-        name: data.name || 'Phụ huynh',
-        phone: data.phone,
-        email: data.email,
+        id: parentData.id,
+        name: parentData.name || 'Phụ huynh',
+        phone: parentData.phone,
+        email: parentData.email,
         role: 'parent',
-        studentId: data.studentId,
+        studentId: parentData.studentId || null,
         studentName: student ? student.name : null
       }
       userRole.value = 'parent'
@@ -363,46 +369,21 @@ export const useAppStore = defineStore('app', () => {
       localStorage.setItem('currentUser', JSON.stringify(currentUser.value))
       localStorage.setItem('userRole', userRole.value)
       
-      return true
+      return { success: true }
     } catch (error) {
-      // Fallback for demo: check local parents array
-      const identifier = credentials.identifier.toLowerCase()
-      const parent = parents.value.find(p => 
-        (p.email && p.email.toLowerCase() === identifier) || 
-        p.phone === identifier
-      )
-      
-      if (!parent || !parent.password) {
-        return false
+      console.error('Login error:', error)
+      // Handle axios errors
+      if (error.response) {
+        // Server responded with error status
+        const errorMessage = error.response.data?.message || error.response.data?.error || 'Email/Số điện thoại hoặc mật khẩu không đúng'
+        return { success: false, message: errorMessage }
+      } else if (error.request) {
+        // Request was made but no response received
+        return { success: false, message: 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.' }
+      } else {
+        // Something else happened
+        return { success: false, message: 'Đã có lỗi xảy ra. Vui lòng thử lại.' }
       }
-
-      // Simple password check (in real app, this should be hashed)
-      if (parent.password !== credentials.password) {
-        return false
-      }
-
-      // Get student info if available
-      const student = students.value.find(s => 
-        s.parentPhone === parent.phone || 
-        s.id === parent.studentId
-      )
-
-      currentUser.value = {
-        id: parent.id,
-        name: parent.name || 'Phụ huynh',
-        phone: parent.phone,
-        email: parent.email,
-        role: 'parent',
-        studentId: parent.studentId,
-        studentName: student ? student.name : null
-      }
-      userRole.value = 'parent'
-      
-      // Save to localStorage
-      localStorage.setItem('currentUser', JSON.stringify(currentUser.value))
-      localStorage.setItem('userRole', userRole.value)
-      
-      return true
     }
   }
 
